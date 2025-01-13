@@ -11,7 +11,7 @@ class ErrorMachine extends Model
 {
     use HasFactory;
     protected $table = "error_machine";
-    protected $fillable = ['ten_su_co','nguyen_nhan', 'cach_xu_ly', 'line_id', 'code'];
+    protected $fillable = ['ten_su_co','nguyen_nhan', 'cach_xu_ly', 'line_id', 'id'];
     protected $casts=[
         "id"=>"string",
         "line_id"=>"string"
@@ -26,15 +26,15 @@ class ErrorMachine extends Model
         $validated = Validator::make(
             $input,
             [
-                'code'=>'required|unique:error_machine,code,'.($input['id']??""),
+                'id'=>'required|unique:error_machine,id,'.($input['id']??""),
                 'ten_su_co'=>'required',
                 'line_id' => 'required',
                 'nguyen_nhan'=>'required', 
                 'cach_xu_ly'=>'required',
             ],
             [
-                'code.required' => 'Không có mã lỗi',
-                'code.unique' => 'Mã lỗi đã tồn tại',
+                'id.required' => 'Không có mã lỗi',
+                'id.unique' => 'Mã lỗi đã tồn tại',
                 'ten_su_co.required'=>'Không có nội dung', 
                 'line_id.required'=>'Không tìm thấy công đoạn',
                 'nguyen_nhan.required'=>'Không có nguyên nhân',

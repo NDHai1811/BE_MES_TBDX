@@ -166,8 +166,8 @@ class ErrorMachineController extends AdminController
         if (isset($request->line_id)) {
             $query->where('line_id', $request->line_id);
         }
-        if (isset($request->code)) {
-            $query->where('code', 'like', "%" . $request->code . "%");
+        if (isset($request->id)) {
+            $query->where('id', 'like', "%" . $request->id . "%");
         }
         if (isset($request->ten_su_co)) {
             $query->where('ten_su_co', 'like', "%" . $request->ten_su_co . "%");
@@ -245,8 +245,8 @@ class ErrorMachineController extends AdminController
         if (isset($request->line)) {
             $query->where('line_id', isset($line_arr[Str::slug($request->line)]) ? $line_arr[Str::slug($request->line)] : '');
         }
-        if (isset($request->code)) {
-            $query->where('code', 'like', "%" . $request->code . "%");
+        if (isset($request->id)) {
+            $query->where('id', 'like', "%" . $request->id . "%");
         }
         $error_machines = $query->get();
         foreach ($error_machines as $error_machine) {
@@ -288,7 +288,7 @@ class ErrorMachineController extends AdminController
         ];
         $header = ['Mã lỗi', 'Nội dung', 'Công đoạn', 'Nguyên nhân', 'Khắc phục', 'Phòng ngừa'];
         $table_key = [
-            'A' => 'code',
+            'A' => 'id',
             'B' => 'noi_dung',
             'C' => 'line_name',
             'D' => 'nguyen_nhan',
