@@ -14,7 +14,7 @@ class Line extends Model
     const LINE_IN = "31";
     const LINE_DAN = "32";
     const LINE_XA_LOT = "33";
-    protected $fillable = ['name', 'note', 'ordering', 'display'];
+    protected $fillable = ['id', 'name', 'note', 'ordering', 'display'];
     protected $hidden = ['created_at', 'updated_at'];
     protected $casts = [
         "id" => "string"
