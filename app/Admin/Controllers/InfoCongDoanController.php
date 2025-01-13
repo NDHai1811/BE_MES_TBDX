@@ -4,17 +4,15 @@ namespace App\Admin\Controllers;
 
 use App\Models\InfoCongDoan;
 use Encore\Admin\Controllers\AdminController;
-use App\Models\CustomUser;
+use Illuminate\Support\Str;
+use App\Models\Line;
 use Illuminate\Http\Request;
 use App\Traits\API;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class InfoCongDoanController extends AdminController
 {
     use API;
-    public function __construct(CustomUser $customUser)
-    {
-        $this->user = $customUser;
-    }
 
     public function getInfoCongDoan(Request $request){
         $query = InfoCongDoan::with('machine')->orderBy('lot_id')->orderBy('thoi_gian_bat_dau');
