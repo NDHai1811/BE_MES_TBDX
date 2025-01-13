@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\Line;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
@@ -15,110 +16,54 @@ use App\Traits\API;
 class LineController extends AdminController
 {
     use API;
-    /**
-     * Title for current resource.
-     *
-     * @var string
-     */
-    protected $title = 'Công đoạn';
 
-    /**
-     * Make a grid builder.
-     *
-     * @return Grid
-     */
-    protected function grid()
+    public function getLine(Request $request)
     {
-        $grid = new Grid(new Line());
-        $grid->actions(function ($actions) {
-            $actions->disableDelete();
-            $actions->disableEdit();
-            $actions->disableView();
-        });
-        $grid->model()->where('display',"=",1);
-        // $grid->column('id', __('Id'));
-        $grid->column('name', __('Tên'));
-        // $grid->column('note', __('Note'));
-        // $grid->column('created_at', __('Created at'));
-        // $grid->column('updated_at', __('Updated at'));
-
-        return $grid;
-    }
-
-    /**
-     * Make a show builder.
-     *
-     * @param mixed $id
-     * @return Show
-     */
-    protected function detail($id)
-    {
-        $show = new Show(Line::findOrFail($id));
-        
-
-        $show->field('id', __('Id'));
-        $show->field('name', __('Tên'));
-        // $show->field('note', __('Note'));
-        // $show->field('created_at', __('Created at'));
-        // $show->field('updated_at', __('Updated at'));
-
-        return $show;
-    }
-
-    /**
-     * Make a form builder.
-     *
-     * @return Form
-     */
-    protected function form()
-    {
-        $form = new Form(new Line());
-
-        $form->text('name', __('Name'));
-        $form->text('note', __('Note'));
-
-        return $form;
-    }
-
-    public function getLine(Request $request){
         $query = Line::orderBy('ordering');
-        if(isset($request->line)){
+        if (isset($request->line)) {
             $query->where('name', 'like', "%$request->line%");
         }
+        $total = $query->count();
+        if (isset($request->page) && isset($request->pageSize)) {
+            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
+        }
         $lines = $query->get();
-        return $this->success($lines);
+        return $this->success(['data' => $lines, 'pagination' => QueryHelper::pagination($request, $total)]);
     }
-    public function updateLine(Request $request){
+    public function updateLine(Request $request)
+    {
         $input = $request->all();
         $line = Line::where('id', $input['id'])->first();
-        if($line){
+        if ($line) {
             $update = $line->update($input);
-            if($update){
+            if ($update) {
                 return $this->success($line);
-            }else{
+            } else {
                 return $this->failure('', 'Không thành công');
-            }  
-        }
-        else{
+            }
+        } else {
             return $this->failure('', 'Không tìm thấy công đoạn');
         }
     }
 
-    public function createLine(Request $request){
+    public function createLine(Request $request)
+    {
         $input = $request->all();
         $line = Line::create($input);
         return $this->success($line, 'Tạo thành công');
     }
 
-    public function deleteLine(Request $request){
+    public function deleteLine(Request $request)
+    {
         $input = $request->all();
         Line::whereIn('id', $input)->delete();
         return $this->success('Xoá thành công');
     }
 
-    public function exportLine(Request $request){
+    public function exportLine(Request $request)
+    {
         $lines = Line::orderBy('ordering')->get();
-        foreach($lines as $line){
+        foreach ($lines as $line) {
             $line->display = $line->display === 1 ? "Có" : "Không";
         }
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -145,7 +90,7 @@ class LineController extends AdminController
             ]
         ]);
         $titleStyle = array_merge($centerStyle, [
-            'font' => ['size'=>16, 'bold' => true],
+            'font' => ['size' => 16, 'bold' => true],
         ]);
         $border = [
             'borders' => array(
@@ -157,37 +102,37 @@ class LineController extends AdminController
         ];
         $header = ['Thứ tự', 'Công đoạn', 'Hiển thị'];
         $table_key = [
-            'A'=>'ordering',
-            'B'=>'name',
-            'C'=>'display',
+            'A' => 'ordering',
+            'B' => 'name',
+            'C' => 'display',
         ];
-        foreach($header as $key => $cell){
-            if(!is_array($cell)){
+        foreach ($header as $key => $cell) {
+            if (!is_array($cell)) {
                 $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
             }
-            $start_col+=1;
+            $start_col += 1;
         }
-        
-        $sheet->setCellValue([1, 1], 'Quản lý công đoạn')->mergeCells([1, 1, $start_col-1, 1])->getStyle([1, 1, $start_col-1, 1])->applyFromArray($titleStyle);
+
+        $sheet->setCellValue([1, 1], 'Quản lý công đoạn')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
         $sheet->getRowDimension(1)->setRowHeight(40);
         $table_col = 1;
-        $table_row = $start_row+1;
-        foreach($lines->toArray() as $key => $row){
+        $table_row = $start_row + 1;
+        foreach ($lines->toArray() as $key => $row) {
             $table_col = 1;
             $row = (array)$row;
-            foreach($table_key as $k=>$value){
-                if(isset($row[$value])){
-                    $sheet->setCellValue($k.$table_row,$row[$value])->getStyle($k.$table_row)->applyFromArray($centerStyle);
-                }else{
+            foreach ($table_key as $k => $value) {
+                if (isset($row[$value])) {
+                    $sheet->setCellValue($k . $table_row, $row[$value])->getStyle($k . $table_row)->applyFromArray($centerStyle);
+                } else {
                     continue;
                 }
-                $table_col+=1;
+                $table_col += 1;
             }
-            $table_row+=1;
+            $table_row += 1;
         }
         foreach ($sheet->getColumnIterator() as $column) {
             $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            $sheet->getStyle($column->getColumnIndex().($start_row).':'.$column->getColumnIndex().($table_row-1))->applyFromArray($border);
+            $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
         }
         header("Content-Description: File Transfer");
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -201,7 +146,8 @@ class LineController extends AdminController
         return $this->success($href);
     }
 
-    public function importLine(Request $request){
+    public function importLine(Request $request)
+    {
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -216,7 +162,7 @@ class LineController extends AdminController
         $data = [];
         $line_arr = [];
         $lines = Line::all();
-        foreach($lines as $line){
+        foreach ($lines as $line) {
             $line_arr[Str::slug($line->name)] = $line->id;
         }
         foreach ($allDataInSheet as $key => $row) {
@@ -229,7 +175,7 @@ class LineController extends AdminController
                 $input['display'] = $row['C'] === "Có" ? 1 : 0;
                 $validated = Line::validateUpdate($input);
                 if ($validated->fails()) {
-                    return $this->failure('', 'Lỗi dòng thứ '.($key).': '.$validated->errors()->first());
+                    return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
                 }
                 $data[] = $input;
             }

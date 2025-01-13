@@ -25,4 +25,18 @@ class QueryHelper
         }
         return $newId;
     }
+
+    public static function pagination($request, $total)
+    {
+        if (isset($request->page) && isset($request->pageSize)) {
+            return [
+                'page' => $request->page,
+                'pageSize' => $request->pageSize,
+                'total' => $total,
+                'totalPage' => ceil($total / $request->pageSize),
+            ];
+        } else {
+            return null;
+        }
+    }
 }
