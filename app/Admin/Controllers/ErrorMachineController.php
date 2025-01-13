@@ -192,11 +192,11 @@ class ErrorMachineController extends AdminController
             $error = ErrorMachine::where('id', $input['id'])->first();
             if ($error) {
                 $update = $error->update($input);
-                return $this->success($error);
             } else {
                 return $this->failure('', 'Không tìm thấy lỗi máy');
             }
             DB::commit();
+            return $this->success($error);
         } catch (\Throwable $th) {
             DB::rollBack();
             ErrorLog::saveError($request, $th);
