@@ -16,81 +16,6 @@ use App\Models\Line;
 class ErrorController extends AdminController
 {
     use API;
-    /**
-     * Title for current resource.
-     *
-     * @var string
-     */
-    protected $title = 'Lỗi công đoạn';
-
-    /**
-     * Make a grid builder.
-     *
-     * @return Grid
-     */
-    protected function grid()
-    {
-        
-        $grid = new Grid(new Error());
-        $grid->actions(function ($actions) {
-            $actions->disableDelete();
-            $actions->disableEdit();
-            $actions->disableView();
-        });
-        $grid->column('id', __('Mã lỗi'))->sortable();
-        // $grid->column('name', __('Name'));
-        $grid->column('noi_dung', __('Nội dung'));
-        $grid->column("line.name",__('Lỗi công đoạn'));
-        // $grid->column('created_at', __('Created at'));
-        // $grid->column('updated_at', __('Updated at'));
-        $grid->column('nguyen_nhan', __('Nguyên nhân'));
-        $grid->column('khac_phuc', __('Khắc phục'));
-        $grid->column('phong_ngua', __('Phòng ngừa'));
-
-        return $grid;
-    }
-
-    /**
-     * Make a show builder.
-     *
-     * @param mixed $id
-     * @return Show
-     */
-    protected function detail($id)
-    {
-        $show = new Show(Error::findOrFail($id));
-
-        $show->field('id', __('Id'));
-        $show->field('name', __('Name'));
-        $show->field('noi_dung', __('Noi dung'));
-        $show->field('line_id', __('Line id'));
-        $show->field('created_at', __('Created at'));
-        $show->field('updated_at', __('Updated at'));
-        $show->field('nguyen_nhan', __('Nguyen nhan'));
-        $show->field('khac_phuc', __('Khac phuc'));
-        $show->field('phong_ngua', __('Phong ngua'));
-
-        return $show;
-    }
-
-    /**
-     * Make a form builder.
-     *
-     * @return Form
-     */
-    protected function form()
-    {
-        $form = new Form(new Error());
-
-        $form->text('name', __('Name'));
-        $form->text('noi_dung', __('Noi dung'));
-        $form->text('line_id', __('Line id'));
-        $form->textarea('nguyen_nhan', __('Nguyen nhan'));
-        $form->textarea('khac_phuc', __('Khac phuc'));
-        $form->textarea('phong_ngua', __('Phong ngua'));
-
-        return $form;
-    }
 
     public function getErrors(Request $request){
         $query = Error::with('line')->orderBy('created_at', 'DESC');
@@ -111,9 +36,6 @@ class ErrorController extends AdminController
         }
 
         $input = $request->all();
-        if(isset($line_arr[Str::slug($input['line'])])){
-            $input['line_id'] = $line_arr[Str::slug($request->line)];
-        }
         $validated = Error::validateUpdate($input);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
@@ -136,9 +58,6 @@ class ErrorController extends AdminController
         }
 
         $input = $request->all();
-        if(isset($line_arr[Str::slug($input['line'])])){
-            $input['line_id'] = $line_arr[Str::slug($input['line'])];
-        }
         $validated = Error::validateUpdate($input, false);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
