@@ -23,7 +23,7 @@ class TestCriteria extends Model
         $validated = Validator::make(
             $input,
             [
-                'id'=>'required|unique:test_criterias' . (isset($input['id']) ? ',id:'.$input['id'] : ''),
+                'id'=>'required|unique:test_criterias' . (isset($input['id']) ? ',id,'.$input['id'] : ''),
                 'line_id' => 'required',
             ],
             [
