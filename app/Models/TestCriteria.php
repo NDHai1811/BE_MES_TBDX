@@ -18,11 +18,6 @@ class TestCriteria extends Model
         return $this->belongsTo(Line::class);
     }
 
-    public function ref_line()
-    {
-        return $this->hasOne(Line::class, 'id', 'reference');
-    }
-
     static function validateUpdate($input, $is_update = true)
     {
         $validated = Validator::make(

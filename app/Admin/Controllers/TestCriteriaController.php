@@ -111,15 +111,7 @@ class TestCriteriaController extends AdminController
     }
     public function updateTestCriteria(Request $request)
     {
-        $line_arr = [];
-        $lines = Line::all();
-        foreach ($lines as $line) {
-            $line_arr[Str::slug($line->name)] = $line->id;
-        }
         $input = $request->all();
-        if (isset($line_arr[Str::slug($input['reference'])])) {
-            $input['reference'] = $line_arr[Str::slug($input['reference'])];
-        }
         $validated = TestCriteria::validateUpdate($input);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
@@ -135,16 +127,7 @@ class TestCriteriaController extends AdminController
 
     public function createTestCriteria(Request $request)
     {
-        $line_arr = [];
-        $lines = Line::all();
-        foreach ($lines as $line) {
-            $line_arr[Str::slug($line->name)] = $line->id;
-        }
-
         $input = $request->all();
-        if (isset($input['reference']) && isset($line_arr[Str::slug($input['reference'])])) {
-            $input['reference'] = $line_arr[Str::slug($input['reference'])];
-        }
         $validated = TestCriteria::validateUpdate($input, false);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
