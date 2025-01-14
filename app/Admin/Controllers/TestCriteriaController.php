@@ -116,13 +116,7 @@ class TestCriteriaController extends AdminController
         foreach ($lines as $line) {
             $line_arr[Str::slug($line->name)] = $line->id;
         }
-
         $input = $request->all();
-        if (isset($line_arr[Str::slug($input['line'])])) {
-            $input['line_id'] = $line_arr[Str::slug($input['line'])];
-        } else if (Str::slug($input['line']) === 'iqc') {
-            $input['line_id'] = 38;
-        }
         if (isset($line_arr[Str::slug($input['reference'])])) {
             $input['reference'] = $line_arr[Str::slug($input['reference'])];
         }
@@ -148,11 +142,6 @@ class TestCriteriaController extends AdminController
         }
 
         $input = $request->all();
-        if (isset($line_arr[Str::slug($input['line'])])) {
-            $input['line_id'] = $line_arr[Str::slug($input['line'])];
-        } else if (Str::slug($input['line']) === 'iqc') {
-            $input['line_id'] = 38;
-        }
         if (isset($input['reference']) && isset($line_arr[Str::slug($input['reference'])])) {
             $input['reference'] = $line_arr[Str::slug($input['reference'])];
         }
