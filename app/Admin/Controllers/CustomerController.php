@@ -34,7 +34,7 @@ class CustomerController extends AdminController
         if (isset($request->id)) {
             $query->where('customer_id', 'like', "%$request->id%");
         }
-        $totalPage = $query->count();
+        $total = $query->count();
         if (isset($request->page) || isset($request->pageSize)) {
             $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
         }
@@ -42,7 +42,7 @@ class CustomerController extends AdminController
         foreach ($customer_short as $customer) {
             $customer->name = $customer->customer->name ?? "";
         }
-        return $this->success(['data'=>$customer_short,'totalPage'=>$totalPage]);
+        return $this->success(['data'=>$customer_short, 'pagination' => QueryHelper::pagination($request, $total)]);
     }
 
     public function getCustomers(Request $request)
