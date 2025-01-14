@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\Customer;
 use App\Models\Layout;
 use App\Models\Machine;
@@ -20,102 +21,22 @@ use App\Models\Parameters;
 class MachineController extends AdminController
 {
     use API;
-    /**
-     * Title for current resource.
-     *
-     * @var string
-     */
-    protected $title = 'Máy móc,thiết bị';
-
-    /**
-     * Make a grid builder.
-     *
-     * @return Grid
-     */
-    protected function grid()
-    {
-        $grid = new Grid(new Machine());
-        $grid->actions(function ($actions) {
-            $actions->disableDelete();
-            $actions->disableEdit();
-            $actions->disableView();
-        });
-
-        $grid->column('name', __('Tên'));
-        $grid->column('kieu_loai', __('Kiểu,loại'));
-        $grid->column('ma_so', __('Mã số'));
-        $grid->column('cong_suat', __('Công suất'));
-        $grid->column('hang_sx', __('Hãng sản xuất'));
-        $grid->column('nam_sd', __('Năm sử dụng'));
-        $grid->column('don_vi_sd', __('Đơn vị sử dụng'));
-        $grid->column('tinh_trang', __('Tình trạng'));
-        $grid->column('vi_tri', __('Vị trí'));
-
-        return $grid;
-    }
-
-    /**
-     * Make a show builder.
-     *
-     * @param mixed $id
-     * @return Show
-     */
-    protected function detail($id)
-    {
-        $show = new Show(Machine::findOrFail($id));
-
-
-        $show->field('id', __('Id'));
-        $show->field('name', __('Name'));
-        $show->field('kieu_loai', __('Kieu loai'));
-        $show->field('ma_so', __('Ma so'));
-        $show->field('line_id', __('Line id'));
-        $show->field('created_at', __('Created at'));
-        $show->field('updated_at', __('Updated at'));
-        $show->field('cong_suat', __('Cong suat'));
-        $show->field('hang_sx', __('Hang sx'));
-        $show->field('nam_sd', __('Nam sd'));
-        $show->field('don_vi_sd', __('Don vi sd'));
-        $show->field('tinh_trang', __('Tinh trang'));
-        $show->field('vi_tri', __('Vi tri'));
-
-        return $show;
-    }
-
-    /**
-     * Make a form builder.
-     *
-     * @return Form
-     */
-    protected function form()
-    {
-        $form = new Form(new Machine());
-
-        $form->text('name', __('Name'));
-        $form->text('kieu_loai', __('Kieu loai'));
-        $form->text('ma_so', __('Ma so'));
-        $form->text('line_id', __('Line id'));
-        $form->text('cong_suat', __('Cong suat'));
-        $form->text('hang_sx', __('Hang sx'));
-        $form->number('nam_sd', __('Nam sd'));
-        $form->text('don_vi_sd', __('Don vi sd'));
-        $form->text('tinh_trang', __('Tinh trang'));
-        $form->text('vi_tri', __('Vi tri'));
-
-        return $form;
-    }
 
     public function getMachines(Request $request)
     {
-        $query = Machine::with('line')->orderBy('created_at');
+        $query = Machine::with('line')->orderBy('created_at')->whereNull('parent_id');
         if (isset($request->id)) {
             $query->where('id', 'like', "%$request->id%");
         }
         if (isset($request->name)) {
             $query->where('name', 'like', "%$request->name%");
         }
-        $machines = $query->whereNull('parent_id')->get();
-        return $this->success($machines);
+        $total = $query->count();
+        if (isset($request->page) || isset($request->pageSize)) {
+            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
+        }
+        $machines = $query->get();
+        return $this->success(['data' => $machines, 'pagination' => QueryHelper::pagination($request, $total)]);
     }
     public function updateMachine(Request $request)
     {

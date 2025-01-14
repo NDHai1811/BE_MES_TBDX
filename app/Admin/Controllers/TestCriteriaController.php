@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\ErrorLog;
 use App\Models\TestCriteria;
 use Encore\Admin\Controllers\AdminController;
@@ -18,88 +19,7 @@ use Illuminate\Support\Facades\DB;
 class TestCriteriaController extends AdminController
 {
     use API;
-    /**
-     * Title for current resource.
-     *
-     * @var string
-     */
-    protected $title = 'Chỉ tiêu kiểm tra';
-    public function upload_xlsx($action, $title)
-    {
-        return view('import', [
-            "action" => $action,
-            "title" => $title
-        ]);
-    }
-    /**
-     * Make a grid builder.
-     *
-     * @return Grid
-     */
-    protected function grid()
-    {
-        $grid = new Grid(new TestCriteria());
-        $grid->actions(function ($actions) {
-            $actions->disableDelete();
-            $actions->disableEdit();
-            $actions->disableView();
-        });
-        $grid->tools(function ($tool) {
-            $tool->append($this->upload_xlsx('/admin/test_criteria/import', 'Chọn file chỉ tiêu kiểm tra'));
-        });
-        // $grid->column('id', __('Id'));
-        $grid->column('line.name', __('Công đoạn'));
-        $grid->column('chi_tieu', __('Chỉ tiêu'));
-        $grid->column('hang_muc', __('Hạng mục'));
-        $grid->column('tieu_chuan', __('Tiêu chuẩn'));
-        $grid->column('ref_line.name', __('Tham chiếu công đoạn'));
-        $grid->column('phan_dinh', __('Phán định'));
-        // $grid->column('created_at', __('Created at'));
-        // $grid->column('updated_at', __('Updated at'));
 
-        return $grid;
-    }
-
-    /**
-     * Make a show builder.
-     *
-     * @param mixed $id
-     * @return Show
-     */
-    protected function detail($id)
-    {
-        $show = new Show(TestCriteria::findOrFail($id));
-
-        $show->field('id', __('Id'));
-        $show->field('line_id', __('Line id'));
-        $show->field('chi_tieu', __('Chi tieu'));
-        $show->field('hang_muc', __('Hang muc'));
-        $show->field('tieu_chuan', __('Tieu chuan'));
-        $show->field('phan_dinh', __('Phan dinh'));
-        $show->field('created_at', __('Created at'));
-        $show->field('updated_at', __('Updated at'));
-
-        return $show;
-    }
-
-    /**
-     * Make a form builder.
-     *
-     * @return Form
-     */
-    protected function form()
-    {
-        $form = new Form(new TestCriteria());
-
-        $form->number('line_id', __('Line id'));
-        $form->text('chi_tieu', __('Chi tieu'));
-        $form->text('hang_muc', __('Hang muc'));
-        $form->text('tieu_chuan', __('Tieu chuan'));
-        $form->text('reference', __('Tham chieu cong doan'));
-        $form->text('phan_dinh', __('Phan dinh'))->default('OK/NG');
-
-        return $form;
-    }
     function readFilex($activeIndex = 0, $file_name)
     {
         $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
@@ -111,46 +31,6 @@ class TestCriteriaController extends AdminController
     }
     public function import($flag = false)
     {
-        // if (!isset($_FILES['files'])) { {
-        //         admin_error('Định dạng file không đúng', 'error');
-        //         return back();
-        //     }
-        // }
-        // // file path
-        // $arr = ["Kích thước", "Ngoại quan", "Đặc tính"];
-        // $lines  = [16, 10, 11, 22, 12, 14, 13, 15, 20];
-        // TestCriteria::truncate();
-        // for ($k = 0; $k <= 8; $k++) {
-        //     $dataSheet = $this->readFilex($k, $_FILES['files']['tmp_name']);
-        //     for ($i = 5; $i <= count( $dataSheet); $i++) {
-        //         $row = $dataSheet[$i];
-        //         $test1 = new TestCriteria();
-        //         $test1->hang_muc = $row['A'] ?? " ";
-        //         $test1->tieu_chuan = $row['B'] ?? " ";
-        //         $test1->chi_tieu = 'Kích thước';
-        //         $test1->line_id = $lines[$k];
-        //         $test1->save();
-
-
-        //         $test2 = new TestCriteria();
-        //         $test2->hang_muc = $row['E'] ?? " ";
-        //         $test2->tieu_chuan = $row['F'] ?? " ";
-        //         $test2->chi_tieu = 'Ngoại quan';
-        //         $test2->line_id = $lines[$k];
-        //         $test2->save();
-
-        //         $test2 = new TestCriteria();
-        //         $test2->hang_muc = $row['I'] ?? " ";
-        //         $test2->tieu_chuan = $row['J'] ?? " ";
-        //         $test2->chi_tieu = 'Đặc tính';
-        //         if ($lines[$k] == 15 || $lines[$k] == 20) {
-        //         $test2->chi_tieu = 'Ngoại quan';
-        //         }
-
-        //         $test2->line_id = $lines[$k];
-        //         $test2->save();
-        //     }
-        // }
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -165,14 +45,14 @@ class TestCriteriaController extends AdminController
         $data = [];
         $line_arr = [];
         $lines = Line::all();
-        foreach($lines as $line){
+        foreach ($lines as $line) {
             $line_arr[Str::slug($line->name)] = $line->id;
         }
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 2
             if ($key > 2) {
                 $input = [];
-                if(isset($line_arr[Str::slug($row['A'])])){
+                if (isset($line_arr[Str::slug($row['A'])])) {
                     $input['line_id'] = $line_arr[Str::slug($row['A'])];
                 }
                 $input['hang_muc'] = $row['B'];
@@ -182,16 +62,16 @@ class TestCriteriaController extends AdminController
                 $input['reference'] = isset($line_arr[Str::slug($row['F'])]) ? $line_arr[Str::slug($row['F'])] : '';
                 $validated = TestCriteria::validateUpdate($input);
                 if ($validated->fails()) {
-                    return $this->failure('', 'Lỗi dòng thứ '.($key).': '.$validated->errors()->first());
+                    return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
                 }
                 $data[] = $input;
             }
         }
         foreach ($data as $key => $input) {
             $test_criteria = TestCriteria::where('line_id', $input['line_id'])->where('hang_muc', 'like', $input['hang_muc'])->first();
-            if($test_criteria) {
+            if ($test_criteria) {
                 $test_criteria->update($input);
-            }else{
+            } else {
                 $test_criteria = TestCriteria::create($input);
             }
         }
@@ -200,52 +80,50 @@ class TestCriteriaController extends AdminController
         return back();
     }
 
-    public function getTestCriteria(Request $request){
+    public function getTestCriteria(Request $request)
+    {
         $line_arr = [];
         $lines = Line::all();
-        foreach($lines as $line){
+        foreach ($lines as $line) {
             $line_arr[Str::slug($line->name)] = $line->id;
         }
 
-        $query = TestCriteria::with('line', 'ref_line')->orderBy('id');
-        if(isset($request->line)){
-            if(Str::slug($request->line) === 'iqc'){
+        $query = TestCriteria::with('line', 'ref_line')->orderBy('id')->whereNotNull('hang_muc')->where('hang_muc', '!=', '');
+        if (isset($request->line)) {
+            if (Str::slug($request->line) === 'iqc') {
                 $query->where('line_id', 38);
-            }else{
+            } else {
                 $query->where('line_id', isset($line_arr[Str::slug($request->line)]) ? $line_arr[Str::slug($request->line)] : '');
             }
         }
-        if(isset($request->hang_muc)){
+        if (isset($request->hang_muc)) {
             $query->where('hang_muc', 'like', "%$request->hang_muc%");
         }
-        $test_criterias = [];
-        foreach( $query->get() as $key => $test_criteria ){
-            if(str_replace(' ', '', $test_criteria->hang_muc) === ""){
-                continue;
-            }
-            if($test_criteria->line_id == 38){
-                $test_criteria->line_name  = "IQC";
-            }else{
-                $test_criteria->line_name  = $test_criteria->line->name ?? "";
-            }
-            $test_criterias[] = $test_criteria;
+        $total = $query->count();
+        if (isset($request->page) || isset($request->pageSize)) {
+            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
         }
-        return $this->success($test_criterias);
+        $test_criterias = $query->get();
+        foreach ($test_criterias as $key => $test_criteria) {
+            $test_criteria->line_name  = $test_criteria->line->name ?? "";
+        }
+        return $this->success(['data' => $test_criterias, 'pagination' => QueryHelper::pagination($request, $total)]);
     }
-    public function updateTestCriteria(Request $request){
+    public function updateTestCriteria(Request $request)
+    {
         $line_arr = [];
         $lines = Line::all();
-        foreach($lines as $line){
+        foreach ($lines as $line) {
             $line_arr[Str::slug($line->name)] = $line->id;
         }
 
         $input = $request->all();
-        if(isset($line_arr[Str::slug($input['line'])])){
+        if (isset($line_arr[Str::slug($input['line'])])) {
             $input['line_id'] = $line_arr[Str::slug($input['line'])];
-        }else if(Str::slug($input['line']) === 'iqc'){
+        } else if (Str::slug($input['line']) === 'iqc') {
             $input['line_id'] = 38;
         }
-        if(isset($line_arr[Str::slug($input['reference'])])){
+        if (isset($line_arr[Str::slug($input['reference'])])) {
             $input['reference'] = $line_arr[Str::slug($input['reference'])];
         }
         $validated = TestCriteria::validateUpdate($input);
@@ -253,29 +131,29 @@ class TestCriteriaController extends AdminController
             return $this->failure('', $validated->errors()->first());
         }
         $test_criteria = TestCriteria::where('id', $input['id'])->first();
-        if($test_criteria){
+        if ($test_criteria) {
             $update = $test_criteria->update($input);
             return $this->success($test_criteria);
-        }
-        else{
+        } else {
             return $this->failure('', 'Không tìm thấy chỉ tiêu');
         }
     }
 
-    public function createTestCriteria(Request $request){
+    public function createTestCriteria(Request $request)
+    {
         $line_arr = [];
         $lines = Line::all();
-        foreach($lines as $line){
+        foreach ($lines as $line) {
             $line_arr[Str::slug($line->name)] = $line->id;
         }
 
         $input = $request->all();
-        if(isset($line_arr[Str::slug($input['line'])])){
+        if (isset($line_arr[Str::slug($input['line'])])) {
             $input['line_id'] = $line_arr[Str::slug($input['line'])];
-        }else if(Str::slug($input['line']) === 'iqc'){
+        } else if (Str::slug($input['line']) === 'iqc') {
             $input['line_id'] = 38;
         }
-        if(isset($input['reference']) && isset($line_arr[Str::slug($input['reference'])])){
+        if (isset($input['reference']) && isset($line_arr[Str::slug($input['reference'])])) {
             $input['reference'] = $line_arr[Str::slug($input['reference'])];
         }
         $validated = TestCriteria::validateUpdate($input, false);
@@ -286,33 +164,35 @@ class TestCriteriaController extends AdminController
         return $this->success($test_criteria, 'Tạo thành công');
     }
 
-    public function deleteTestCriteria(Request $request){
+    public function deleteTestCriteria(Request $request)
+    {
         $input = $request->all();
         TestCriteria::whereIn('id', $input)->delete();
         return $this->success('Xoá thành công');
     }
 
-    public function exportTestCriteria(Request $request){
+    public function exportTestCriteria(Request $request)
+    {
         $line_arr = [];
         $lines = Line::all();
-        foreach($lines as $line){
+        foreach ($lines as $line) {
             $line_arr[Str::slug($line->name)] = $line->id;
         }
         $query = TestCriteria::with('line')->orderBy('id');
-        if(isset($request->line)){
+        if (isset($request->line)) {
             $query->where('line_id', $line_arr[Str::slug($request->line)]);
         }
-        if(isset($request->hang_muc)){
+        if (isset($request->hang_muc)) {
             $query->where('hang_muc', 'like', "%$request->hang_muc%");
         }
         $test_criterias = [];
-        foreach( $query->get() as $key => $test_criteria ){
-            if(str_replace(' ', '', $test_criteria->hang_muc) === ""){
+        foreach ($query->get() as $key => $test_criteria) {
+            if (str_replace(' ', '', $test_criteria->hang_muc) === "") {
                 continue;
             }
-            if($test_criteria->line_id == 38){
+            if ($test_criteria->line_id == 38) {
                 $test_criteria->line_name  = "IQC";
-            }else{
+            } else {
                 $test_criteria->line_name  = $test_criteria->line->name ?? "";
             }
             $test_criteria->ref_line_name  = $test_criteria->ref_line ? $test_criteria->ref_line->name : '';
@@ -342,7 +222,7 @@ class TestCriteriaController extends AdminController
             ]
         ]);
         $titleStyle = array_merge($centerStyle, [
-            'font' => ['size'=>16, 'bold' => true],
+            'font' => ['size' => 16, 'bold' => true],
         ]);
         $border = [
             'borders' => array(
@@ -354,42 +234,42 @@ class TestCriteriaController extends AdminController
         ];
         $header = ['Công đoạn', 'Mã lỗi', 'Tiêu chí', 'Hạng mục', 'Chỉ tiêu', 'Dung sai', 'Phân định', 'Tham chiếu TCKT công đoạn'];
         $table_key = [
-            'A'=>'line_name',
-            'B'=>'id',
-            'C'=>'name',
-            'D'=>'hang_muc',
-            'E'=>'chi_tieu',
-            'F'=>'tieu_chuan',
-            'G'=>'phan_dinh',
-            'H'=>'ref_line_name',
+            'A' => 'line_name',
+            'B' => 'id',
+            'C' => 'name',
+            'D' => 'hang_muc',
+            'E' => 'chi_tieu',
+            'F' => 'tieu_chuan',
+            'G' => 'phan_dinh',
+            'H' => 'ref_line_name',
         ];
-        foreach($header as $key => $cell){
-            if(!is_array($cell)){
+        foreach ($header as $key => $cell) {
+            if (!is_array($cell)) {
                 $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
             }
-            $start_col+=1;
+            $start_col += 1;
         }
-        
-        $sheet->setCellValue([1, 1], 'Quản lý thông số sản phẩm')->mergeCells([1, 1, $start_col-1, 1])->getStyle([1, 1, $start_col-1, 1])->applyFromArray($titleStyle);
+
+        $sheet->setCellValue([1, 1], 'Quản lý thông số sản phẩm')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
         $sheet->getRowDimension(1)->setRowHeight(40);
         $table_col = 1;
-        $table_row = $start_row+1;
-        foreach($test_criterias as $key => $row){
+        $table_row = $start_row + 1;
+        foreach ($test_criterias as $key => $row) {
             $table_col = 1;
             $row = (array)$row;
-            foreach($table_key as $k=>$value){
-                if(isset($row[$value])){
-                    $sheet->setCellValue($k.$table_row,$row[$value])->getStyle($k.$table_row)->applyFromArray($centerStyle);
-                }else{
+            foreach ($table_key as $k => $value) {
+                if (isset($row[$value])) {
+                    $sheet->setCellValue($k . $table_row, $row[$value])->getStyle($k . $table_row)->applyFromArray($centerStyle);
+                } else {
                     continue;
                 }
-                $table_col+=1;
+                $table_col += 1;
             }
-            $table_row+=1;
+            $table_row += 1;
         }
         foreach ($sheet->getColumnIterator() as $column) {
             $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            $sheet->getStyle($column->getColumnIndex().($start_row).':'.$column->getColumnIndex().($table_row-1))->applyFromArray($border);
+            $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
         }
         header("Content-Description: File Transfer");
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -403,7 +283,8 @@ class TestCriteriaController extends AdminController
         return $this->success($href);
     }
 
-    public function importTestCriteria(Request $request){
+    public function importTestCriteria(Request $request)
+    {
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -418,17 +299,17 @@ class TestCriteriaController extends AdminController
         $data = [];
         $line_arr = [];
         $lines = Line::all();
-        foreach($lines as $line){
+        foreach ($lines as $line) {
             $line_arr[Str::slug($line->name)] = $line->id;
         }
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 2
             if ($key > 1) {
                 $input = [];
-                if(!$row['C'] || !$row['D'] || !$row['A']){
+                if (!$row['C'] || !$row['D'] || !$row['A']) {
                     continue;
                 }
-                if(isset($line_arr[Str::slug($row['A'])])){
+                if (isset($line_arr[Str::slug($row['A'])])) {
                     $input['line_id'] = $line_arr[Str::slug($row['A'])];
                 }
                 $input['id'] = $row['C'];
@@ -442,7 +323,7 @@ class TestCriteriaController extends AdminController
                 $input['ghi_chu'] = $row['K'];
                 $validated = TestCriteria::validateUpdate($input);
                 if ($validated->fails()) {
-                    return $this->failure('', 'Lỗi dòng thứ '.($key).': '.$validated->errors()->first());
+                    return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
                 }
                 $data[] = $input;
             }
@@ -455,7 +336,7 @@ class TestCriteriaController extends AdminController
                 // if($test_criteria) {
                 //     $test_criteria->update($input);
                 // }else{
-                    $test_criteria = TestCriteria::create($input);
+                $test_criteria = TestCriteria::create($input);
                 // }
             }
             DB::commit();
@@ -466,7 +347,8 @@ class TestCriteriaController extends AdminController
         }
         return $this->success([], 'Upload thành công');
     }
-    public function importTestCriteriaVer2(Request $request){
+    public function importTestCriteriaVer2(Request $request)
+    {
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -481,17 +363,17 @@ class TestCriteriaController extends AdminController
         $data = [];
         $line_arr = [];
         $lines = Line::all();
-        foreach($lines as $line){
+        foreach ($lines as $line) {
             $line_arr[Str::slug($line->name)] = $line->id;
         }
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 2
             if ($key > 2) {
                 $input = [];
-                if(!$row['B']){
+                if (!$row['B']) {
                     continue;
                 }
-                if(isset($line_arr[Str::slug($row['B'])])){
+                if (isset($line_arr[Str::slug($row['B'])])) {
                     $input['line_id'] = $line_arr[Str::slug($row['B'])];
                 }
                 $input['id'] = $row['D'];
@@ -502,7 +384,7 @@ class TestCriteriaController extends AdminController
                 $input['hang_muc'] = $row['C'] === 'Tính năng' ? 'tinh_nang' : 'ngoai_quan';
                 $validated = TestCriteria::validateUpdate($input);
                 if ($validated->fails()) {
-                    return $this->failure('', 'Lỗi dòng thứ '.($key).': '.$validated->errors()->first());
+                    return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
                 }
                 $data[] = $input;
             }
@@ -515,7 +397,7 @@ class TestCriteriaController extends AdminController
                 // if($test_criteria) {
                 //     $test_criteria->update($input);
                 // }else{
-                    $test_criteria = TestCriteria::create($input);
+                $test_criteria = TestCriteria::create($input);
                 // }
             }
             DB::commit();
