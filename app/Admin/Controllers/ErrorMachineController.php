@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\ErrorLog;
 use App\Models\ErrorMachine;
 use Encore\Admin\Controllers\AdminController;
@@ -32,12 +33,12 @@ class ErrorMachineController extends AdminController
         if (isset($request->ten_su_co)) {
             $query->where('ten_su_co', 'like', "%" . $request->ten_su_co . "%");
         }
-        $totalPage = $query->count();
+        $total = $query->count();
         if (isset($request->page) || isset($request->pageSize)) {
             $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
         }
         $error_machines = $query->get();
-        return $this->success(['data' => $error_machines, 'totalPage' => $totalPage]);
+        return $this->success(['data' => $error_machines, 'pagination' => QueryHelper::pagination($request, $total)]);
     }
 
     public function updateErrorMachine(Request $request)
