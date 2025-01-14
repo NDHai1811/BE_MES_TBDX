@@ -18,12 +18,12 @@ class TestCriteria extends Model
         return $this->belongsTo(Line::class);
     }
 
-    static function validateUpdate($input, $is_update = true)
+    static function validate($input)
     {
         $validated = Validator::make(
             $input,
             [
-                'id'=>'required|unique:test_criterias',
+                'id'=>'required|unique:test_criterias' . (isset($input['id']) ? ',id:'.$input['id'] : ''),
                 'line_id' => 'required',
             ],
             [

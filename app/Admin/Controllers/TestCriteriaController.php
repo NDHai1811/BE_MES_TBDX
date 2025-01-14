@@ -112,7 +112,7 @@ class TestCriteriaController extends AdminController
     public function updateTestCriteria(Request $request)
     {
         $input = $request->all();
-        $validated = TestCriteria::validateUpdate($input);
+        $validated = TestCriteria::validate($input);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
@@ -128,7 +128,7 @@ class TestCriteriaController extends AdminController
     public function createTestCriteria(Request $request)
     {
         $input = $request->all();
-        $validated = TestCriteria::validateUpdate($input, false);
+        $validated = TestCriteria::validate($input);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
