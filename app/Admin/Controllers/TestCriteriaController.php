@@ -88,7 +88,7 @@ class TestCriteriaController extends AdminController
             $line_arr[Str::slug($line->name)] = $line->id;
         }
 
-        $query = TestCriteria::with('line', 'ref_line')->orderBy('id')->whereNotNull('hang_muc')->where('hang_muc', '!=', '');
+        $query = TestCriteria::with('line')->orderBy('id')->whereNotNull('hang_muc')->where('hang_muc', '!=', '');
         if (isset($request->line)) {
             if (Str::slug($request->line) === 'iqc') {
                 $query->where('line_id', 38);
