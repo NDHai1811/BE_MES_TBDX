@@ -30,7 +30,12 @@ class ShiftAssignmentController extends AdminController
         }
         if (!empty($request->username)) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('username', "%$request->username%");
+                $q->where('username', "$request->username");
+            });
+        }
+        if (!empty($request->name)) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('name', "%$request->name%");
             });
         }
         if (!empty($request->shift_id)) {
