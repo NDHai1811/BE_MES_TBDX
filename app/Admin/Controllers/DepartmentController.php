@@ -24,12 +24,12 @@ class DepartmentController extends Controller
     use API;
 
     public function index(Request $request){
-        $query = Department::query();
+        $query = Department::orderBy('created_at');
         if(isset($request->name)){
-            $query->where('name', "%$request->name%");
+            $query->where('name', 'like', "%$request->name%");
         }
         $records = $query->paginate($request->pageSize ?? null);
-        $departments = $query->get();
+        $departments = $records->items();
         return $this->success(['data' => $departments, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
 
