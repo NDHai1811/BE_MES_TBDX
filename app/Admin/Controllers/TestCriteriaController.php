@@ -20,15 +20,6 @@ class TestCriteriaController extends AdminController
 {
     use API;
 
-    function readFilex($activeIndex = 0, $file_name)
-    {
-        $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-
-        $spreadsheet = $reader->load($file_name);
-        $spreadsheet->setActiveSheetIndex($activeIndex);
-        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-        return $allDataInSheet;
-    }
     public function import($flag = false)
     {
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);

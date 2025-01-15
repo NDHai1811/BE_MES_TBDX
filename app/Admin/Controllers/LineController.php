@@ -23,12 +23,8 @@ class LineController extends AdminController
         if (isset($request->line)) {
             $query->where('name', 'like', "%$request->line%");
         }
-        $total = $query->count();
-        if (isset($request->page) && isset($request->pageSize)) {
-            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
-        }
-        $lines = $query->get();
-        return $this->success(['data' => $lines, 'pagination' => QueryHelper::pagination($request, $total)]);
+        $records = $query->paginate($request->pageSize ?? null);
+        return $this->success(['data' => $records, 'pagination' => QueryHelper::pagination($request, $total)]);
     }
     public function updateLine(Request $request)
     {

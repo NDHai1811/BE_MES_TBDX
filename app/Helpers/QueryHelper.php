@@ -26,14 +26,14 @@ class QueryHelper
         return $newId;
     }
 
-    public static function pagination($request, $total)
+    public static function pagination($request, $records)
     {
         if (isset($request->page) && isset($request->pageSize)) {
             return [
-                'page' => $request->page,
+                'page' => $records->currentPage(),
                 'pageSize' => $request->pageSize,
-                'total' => $total,
-                'totalPage' => ceil($total / $request->pageSize),
+                'total' => $records->total(),
+                'totalPages' => $records->lastPage(),
             ];
         } else {
             return null;
