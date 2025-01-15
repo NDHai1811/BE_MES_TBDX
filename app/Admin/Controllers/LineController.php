@@ -24,7 +24,7 @@ class LineController extends AdminController
             $query->where('name', 'like', "%$request->line%");
         }
         $records = $query->paginate($request->pageSize ?? null);
-        return $this->success(['data' => $records, 'pagination' => QueryHelper::pagination($request, $records)]);
+        return $this->success(['data' => $records->items(), 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function updateLine(Request $request)
     {
