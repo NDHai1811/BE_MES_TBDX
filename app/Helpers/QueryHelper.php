@@ -33,7 +33,7 @@ class QueryHelper
                 'page' => $records->currentPage(),
                 'pageSize' => $request->pageSize,
                 'total' => $records->total(),
-                'totalPages' => $records->lastPage(),
+                'totalPage' => $records->lastPage(),
             ];
         } else {
             return null;
