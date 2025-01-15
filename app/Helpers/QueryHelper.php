@@ -31,7 +31,7 @@ class QueryHelper
         if (isset($request->page) && isset($request->pageSize)) {
             return [
                 'page' => $records->currentPage(),
-                'pageSize' => $request->pageSize,
+                'pageSize' => (int)$request->pageSize,
                 'total' => $records->total(),
                 'totalPage' => $records->lastPage(),
             ];
