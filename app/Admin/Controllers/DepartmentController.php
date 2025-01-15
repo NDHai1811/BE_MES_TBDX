@@ -24,7 +24,7 @@ class DepartmentController extends Controller
     use API;
 
     public function index(Request $request){
-        $query = Department::orderBy('created_at');
+        $query = Department::query();
         if(isset($request->name)){
             $query->where('name', "%$request->name%");
         }
