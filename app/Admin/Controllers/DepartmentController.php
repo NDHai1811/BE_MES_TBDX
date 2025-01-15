@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Http\Controllers\Controller;
 use App\Models\CustomUser;
 use App\Models\Department;
@@ -23,8 +24,10 @@ class DepartmentController extends Controller
     use API;
 
     public function index(Request $request){
-        $deparrtments = Department::all();
-        return $this->success($deparrtments);
+        $query = Department::orderBy('created_at');
+        $records = $query->paginate($request->pageSize ?? null);
+        $deparrtments = $records->items();
+        return $this->success(['data' => $deparrtments, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
 
     public function create(Request $request){

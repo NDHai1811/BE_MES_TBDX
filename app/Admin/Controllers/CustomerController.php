@@ -34,15 +34,12 @@ class CustomerController extends AdminController
         if (isset($request->id)) {
             $query->where('customer_id', 'like', "%$request->id%");
         }
-        $total = $query->count();
-        if (isset($request->page) || isset($request->pageSize)) {
-            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
-        }
-        $customer_short = $query->get();
+        $records = $query->paginate($request->pageSize ?? null);
+        $customer_short = $records->items();
         foreach ($customer_short as $customer) {
             $customer->name = $customer->customer->name ?? "";
         }
-        return $this->success(['data'=>$customer_short, 'pagination' => QueryHelper::pagination($request, $total)]);
+        return $this->success(['data'=>$customer_short, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
 
     public function getCustomers(Request $request)
@@ -54,12 +51,9 @@ class CustomerController extends AdminController
         if (isset($request->id)) {
             $query->where('id', 'like', "%$request->id%");
         }
-        $total = $query->count();
-        if (isset($request->page) || isset($request->pageSize)) {
-            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
-        }
-        $customers = $query->get();
-        return $this->success(['data'=>$customers, 'pagination' => QueryHelper::pagination($request, $total)]);
+        $records = $query->paginate($request->pageSize ?? null);
+        $customers = $records->items();
+        return $this->success(['data'=>$customers, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
 
     public function updateCustomer(Request $request)

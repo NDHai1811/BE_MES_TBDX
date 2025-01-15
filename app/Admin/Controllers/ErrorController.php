@@ -26,12 +26,9 @@ class ErrorController extends AdminController
         if(isset($request->name)){
             $query->where('name', 'like', "%$request->name%");
         }
-        $total = $query->count();
-        if (isset($request->page) && isset($request->pageSize)) {
-            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
-        }
-        $errors = $query->get();
-        return $this->success(['data' => $errors, 'pagination' => QueryHelper::pagination($request, $total)]);
+        $records = $query->paginate($request->pageSize ?? null);
+        $errors = $records->items();
+        return $this->success(['data' => $errors, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function updateErrors(Request $request){
         $line_arr = [];

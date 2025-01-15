@@ -90,15 +90,12 @@ class TestCriteriaController extends AdminController
         if (isset($request->hang_muc)) {
             $query->where('hang_muc', 'like', "%$request->hang_muc%");
         }
-        $total = $query->count();
-        if (isset($request->page) || isset($request->pageSize)) {
-            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
-        }
-        $test_criterias = $query->get();
+        $records = $query->paginate($request->pageSize ?? null);
+        $test_criterias = $records->items();
         foreach ($test_criterias as $key => $test_criteria) {
             $test_criteria->line_name  = $test_criteria->line->name ?? "";
         }
-        return $this->success(['data' => $test_criterias, 'pagination' => QueryHelper::pagination($request, $total)]);
+        return $this->success(['data' => $test_criterias, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function updateTestCriteria(Request $request)
     {

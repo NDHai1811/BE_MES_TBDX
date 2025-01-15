@@ -31,12 +31,9 @@ class MachineController extends AdminController
         if (isset($request->name)) {
             $query->where('name', 'like', "%$request->name%");
         }
-        $total = $query->count();
-        if (isset($request->page) || isset($request->pageSize)) {
-            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
-        }
-        $machines = $query->get();
-        return $this->success(['data' => $machines, 'pagination' => QueryHelper::pagination($request, $total)]);
+        $records = $query->paginate($request->pageSize ?? null);
+        $machines = $records->items();
+        return $this->success(['data' => $machines, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function updateMachine(Request $request)
     {

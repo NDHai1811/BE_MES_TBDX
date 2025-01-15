@@ -33,12 +33,9 @@ class ErrorMachineController extends AdminController
         if (isset($request->ten_su_co)) {
             $query->where('ten_su_co', 'like', "%" . $request->ten_su_co . "%");
         }
-        $total = $query->count();
-        if (isset($request->page) || isset($request->pageSize)) {
-            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
-        }
-        $error_machines = $query->get();
-        return $this->success(['data' => $error_machines, 'pagination' => QueryHelper::pagination($request, $total)]);
+        $records = $query->paginate($request->pageSize ?? null);
+        $error_machines = $records->items();
+        return $this->success(['data' => $error_machines, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
 
     public function updateErrorMachine(Request $request)
