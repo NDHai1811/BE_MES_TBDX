@@ -29,8 +29,8 @@ class DepartmentController extends Controller
             $query->where('name', "%$request->name%");
         }
         $records = $query->paginate($request->pageSize ?? null);
-        $deparrtments = $records->items();
-        return $this->success(['data' => $deparrtments, 'pagination' => QueryHelper::pagination($request, $records)]);
+        $departments = $records->items();
+        return $this->success(['data' => $departments, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
 
     public function create(Request $request){
