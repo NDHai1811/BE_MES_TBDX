@@ -29,7 +29,7 @@ class DepartmentController extends Controller
             $query->where('name', "%$request->name%");
         }
         $records = $query->paginate($request->pageSize ?? null);
-        $departments = $records->items();
+        $departments = $query->get();
         return $this->success(['data' => $departments, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
 
