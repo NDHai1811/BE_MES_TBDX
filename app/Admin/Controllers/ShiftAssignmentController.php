@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\LSXPallet;
 use App\Models\Role;
 use App\Models\Permission;
@@ -29,19 +30,20 @@ class ShiftAssignmentController extends AdminController
         }
         if (!empty($request->username)) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('username', $request->username);
+                $q->where('username', "%$request->username%");
             });
         }
         if (!empty($request->shift_id)) {
             $query->where('shift_id', $request->shift_id);
         }
-        $shift_assignments = $query->with('user', 'shift')->get();
+        $records = $query->with('user', 'shift')->paginate($request->pageSize ?? null);
+        $shift_assignments = $records->items();
         foreach ($shift_assignments as $key => $value) {
             $value->user_name = $value->user->name ?? "";
             $value->username = $value->user->username ?? "";
             $value->shift_name = $value->shift->name ?? "";
         }
-        return $this->success($shift_assignments);
+        return $this->success(['data' => $shift_assignments, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
 
     public function updateShiftAssignment(Request $request)

@@ -73,19 +73,9 @@ class TestCriteriaController extends AdminController
 
     public function getTestCriteria(Request $request)
     {
-        $line_arr = [];
-        $lines = Line::all();
-        foreach ($lines as $line) {
-            $line_arr[Str::slug($line->name)] = $line->id;
-        }
-
         $query = TestCriteria::with('line')->orderBy('id')->whereNotNull('hang_muc')->where('hang_muc', '!=', '');
         if (isset($request->line)) {
-            if (Str::slug($request->line) === 'iqc') {
-                $query->where('line_id', 38);
-            } else {
-                $query->where('line_id', isset($line_arr[Str::slug($request->line)]) ? $line_arr[Str::slug($request->line)] : '');
-            }
+            $query->where('line_id', $request->line_id);
         }
         if (isset($request->hang_muc)) {
             $query->where('hang_muc', 'like', "%$request->hang_muc%");

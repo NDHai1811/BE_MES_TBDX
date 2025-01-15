@@ -25,6 +25,9 @@ class DepartmentController extends Controller
 
     public function index(Request $request){
         $query = Department::orderBy('created_at');
+        if(isset($request->name)){
+            $query->where('name', "%$request->name%");
+        }
         $records = $query->paginate($request->pageSize ?? null);
         $deparrtments = $records->items();
         return $this->success(['data' => $deparrtments, 'pagination' => QueryHelper::pagination($request, $records)]);

@@ -617,12 +617,12 @@ Route::group([
     $router->get('khuon/export', [App\Admin\Controllers\KhuonController::class, 'exportKhuon']);
     $router->post('khuon/import', [App\Admin\Controllers\KhuonController::class, 'importKhuon']);
 
-    $router->get('jig/list', [App\Admin\Controllers\JigController::class, 'getJig']);
-    $router->patch('jig/update', [App\Admin\Controllers\JigController::class, 'updateJig']);
-    $router->post('jig/create', [App\Admin\Controllers\JigController::class, 'createJig']);
-    $router->post('jig/delete', [App\Admin\Controllers\JigController::class, 'deleteJig']);
-    $router->get('jig/export', [App\Admin\Controllers\JigController::class, 'exportJig']);
-    $router->post('jig/import', [App\Admin\Controllers\JigController::class, 'importJig']);
+    // $router->get('jig/list', [App\Admin\Controllers\JigController::class, 'getJig']);
+    // $router->patch('jig/update', [App\Admin\Controllers\JigController::class, 'updateJig']);
+    // $router->post('jig/create', [App\Admin\Controllers\JigController::class, 'createJig']);
+    // $router->post('jig/delete', [App\Admin\Controllers\JigController::class, 'deleteJig']);
+    // $router->get('jig/export', [App\Admin\Controllers\JigController::class, 'exportJig']);
+    // $router->post('jig/import', [App\Admin\Controllers\JigController::class, 'importJig']);
 
     $router->get('maintenance/list', [App\Admin\Controllers\MaintenanceController::class, 'getMaintenance']);
     $router->get('maintenance/detail', [App\Admin\Controllers\MaintenanceController::class, 'getMaintenanceDetail']);
