@@ -15,10 +15,24 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use Illuminate\Support\Str;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 class CustomerController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('customer/list', [CustomerController::class, 'getCustomerByShortName']);
+            Route::patch('customer/update', [CustomerController::class, 'updateCustomer']);
+            Route::post('customer/create', [CustomerController::class, 'createCustomer']);
+            Route::delete('customer/delete', [CustomerController::class, 'deleteCustomer']);
+            Route::get('customer/export', [CustomerController::class, 'exportCustomer']);
+            Route::post('customer/import', [CustomerController::class, 'importCustomer']);
+            Route::get('real-customer-list', [CustomerController::class,'getCustomers']);
+        });
+    }
     
     public function getCustomerByShortName(Request $request)
     {

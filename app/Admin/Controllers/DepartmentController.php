@@ -17,11 +17,22 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 class DepartmentController extends Controller
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('departments/list', [DepartmentController::class, 'index']);
+            Route::post('departments/create', [DepartmentController::class, 'create']);
+            Route::delete('departments/delete', [DepartmentController::class, 'delete']);
+            Route::patch('departments/update', [DepartmentController::class, 'update']);
+        });
+    }
 
     public function index(Request $request){
         $query = Department::orderBy('created_at');

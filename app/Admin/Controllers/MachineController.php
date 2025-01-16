@@ -17,10 +17,23 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Models\Line;
 use App\Models\MachineParameter;
 use App\Models\Parameters;
+use Illuminate\Support\Facades\Route;
 
 class MachineController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('machines/list', [MachineController::class, 'getMachines']);
+            Route::patch('machines/update', [MachineController::class, 'updateMachine']);
+            Route::post('machines/create', [MachineController::class, 'createMachine']);
+            Route::delete('machines/delete', [MachineController::class, 'deleteMachines']);
+            Route::get('machines/export', [MachineController::class, 'exportMachines']);
+            Route::post('machines/import', [MachineController::class, 'importMachines']);
+        });
+    }
 
     public function getMachines(Request $request)
     {
@@ -232,38 +245,6 @@ class MachineController extends AdminController
         return $this->success([], 'Upload thành công');
     }
 
-    public function parametersImport(Request $request)
-    {
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
-        if ($extension == 'csv') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
-        } elseif ($extension == 'xlsx') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-        } else {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
-        }
-        // file path
-        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
-        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-        $data = [];
-        foreach ($allDataInSheet as $key => $row) {
-            //Lấy dứ liệu từ dòng thứ 2
-            if ($key > 3) {
-                $input = [];
-                $input['machine_id'] = 'So01';
-                $input['name'] = $row['D'];
-                $input['parameter_id'] = $row['I'];
-                $data[] = $input;
-            }
-        }
-        foreach ($data as $key => $input) {
-            $machine = MachineParameter::create($input);
-        }
-        // foreach ($data as $key => $input) {
-        //     $customer = Layout::create($input);
-        // }
-        return $this->success([], 'Upload thành công');
-    }
     public function layoutImport(Request $request)
     {
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);

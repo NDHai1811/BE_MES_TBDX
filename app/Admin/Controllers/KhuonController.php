@@ -18,11 +18,24 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use stdClass;
 
 class KhuonController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('khuon/list', [KhuonController::class, 'getKhuon']);
+            Route::patch('khuon/update', [KhuonController::class, 'updateKhuon']);
+            Route::post('khuon/create', [KhuonController::class, 'createKhuon']);
+            Route::delete('khuon/delete', [KhuonController::class, 'deleteKhuon']);
+            Route::get('khuon/export', [KhuonController::class, 'exportKhuon']);
+            Route::post('khuon/import', [KhuonController::class, 'importKhuon']);
+        });
+    }
 
     public function getKhuon(Request $request)
     {

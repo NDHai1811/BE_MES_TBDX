@@ -5,17 +5,27 @@ namespace App\Admin\Controllers;
 use App\Helpers\QueryHelper;
 use App\Models\Line;
 use Encore\Admin\Controllers\AdminController;
-use Encore\Admin\Form;
-use Encore\Admin\Grid;
-use Encore\Admin\Show;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
+use Illuminate\Support\Facades\Route;
 
 class LineController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('cong-doan/list', [LineController::class, 'getLine']);
+            Route::patch('cong-doan/update', [LineController::class, 'updateLine']);
+            Route::post('cong-doan/create', [LineController::class, 'createLine']);
+            Route::delete('cong-doan/delete', [LineController::class, 'deleteLine']);
+            Route::get('cong-doan/export', [LineController::class, 'exportLine']);
+            Route::post('cong-doan/import', [LineController::class, 'importLine']);
+        });
+    }
 
     public function getLine(Request $request)
     {

@@ -30,11 +30,26 @@ use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 class KPIController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('kpi-ty-le-ke-hoach', [KPIController::class, 'kpiTyLeKeHoach']);
+            Route::get('kpi-ton-kho-nvl', [KPIController::class, 'kpiTonKhoNVL']);
+            Route::get('kpi-ty-le-ng-pqc', [KPIController::class, 'kpiTyLeNGPQC']);
+            Route::get('kpi-ty-le-van-hanh-thiet-bi', [KPIController::class, 'kpiTyLeVanHanh']);
+            Route::get('kpi-ty-le-ke-hoach-in', [KPIController::class, 'kpiTyLeKeHoachIn']);
+            Route::get('kpi-ty-le-loi-may', [KPIController::class, 'kpiTyLeLoiMay']);
+            Route::get('kpi-ty-le-ng-oqc', [KPIController::class, 'kpiTyLeNGOQC']);
+            Route::get('kpi-ton-kho-tp', [KPIController::class, 'kpiTonKhoTP']);
+        });
+    }
 
     public function kpiTyLeKeHoach(Request $request)
     {

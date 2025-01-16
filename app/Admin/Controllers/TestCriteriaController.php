@@ -15,10 +15,23 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use App\Models\Line;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 class TestCriteriaController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('test_criteria/list', [TestCriteriaController::class, 'getTestCriteria']);
+            Route::patch('test_criteria/update', [TestCriteriaController::class, 'updateTestCriteria']);
+            Route::post('test_criteria/create', [TestCriteriaController::class, 'createTestCriteria']);
+            Route::delete('test_criteria/delete', [TestCriteriaController::class, 'deleteTestCriteria']);
+            Route::get('test_criteria/export', [TestCriteriaController::class, 'exportTestCriteria']);
+            Route::post('test_criteria/import', [TestCriteriaController::class, 'importTestCriteriaVer2']);
+        });
+    }
 
     public function import($flag = false)
     {

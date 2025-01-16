@@ -8,11 +8,22 @@ use Illuminate\Support\Str;
 use App\Models\Line;
 use Illuminate\Http\Request;
 use App\Traits\API;
+use Illuminate\Support\Facades\Route;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class InfoCongDoanController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('info-cong-doan/list', [InfoCongDoanController::class, 'getInfoCongDoan']);
+            Route::post('info-cong-doan/update', [InfoCongDoanController::class, 'updateInfoCongDoan']);
+            Route::get('info-cong-doan/export', [InfoCongDoanController::class, 'exportInfoCongDoan']);
+            Route::post('info-cong-doan/import', [InfoCongDoanController::class, 'importInfoCongDoan']);
+        });
+    }
 
     public function getInfoCongDoan(Request $request){
         $query = InfoCongDoan::with('machine')->orderBy('lot_id')->orderBy('thoi_gian_bat_dau');

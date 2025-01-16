@@ -13,10 +13,23 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use App\Models\Line;
+use Illuminate\Support\Facades\Route;
 
 class ErrorController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('errors/list', [ErrorController::class, 'getErrors']);
+            Route::patch('errors/update', [ErrorController::class, 'updateErrors']);
+            Route::post('errors/create', [ErrorController::class, 'createErrors']);
+            Route::delete('errors/delete', [ErrorController::class, 'deleteErrors']);
+            Route::get('errors/export', [ErrorController::class, 'exportErrors']);
+            Route::post('errors/import', [ErrorController::class, 'importErrors']);
+        });
+    }
 
     public function getErrors(Request $request){
         $query = Error::with('line')->orderBy('created_at', 'DESC');

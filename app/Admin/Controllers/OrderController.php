@@ -27,78 +27,25 @@ use Error;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 class OrderController extends AdminController
 {
     use API;
 
-    public function updateData(Request $request)
+    public static function registerRoutes()
     {
-        $records = WarehouseFGLog::all();
-        try {
-            DB::beginTransaction();
-            foreach ($records as $key => $record) {
-                $data = LSXPallet::where('lo_sx', $record->lo_sx)->first();
-                if ($data && $data->order_id) {
-                    $record->update(['order_id' => $data->order_id]);
-                }
-            }
-            DB::commit();
-            return $this->success('Cập nhật thành công');
-        } catch (Exception $e) {
-            DB::rollBack();
-            return $this->failure('Cập nhật không thành công');
-        }
-    }
-
-    public function fixBug(Request $request)
-    {
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
-        if ($extension == 'csv') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
-        } elseif ($extension == 'xlsx') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-        } else {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
-        }
-        // file path
-        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
-        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-        Material::truncate();
-        WarehouseMLTLog::truncate();
-        foreach ($allDataInSheet as $key => $row) {
-            //Lấy dứ liệu từ dòng thứ 4
-            if ($key > 8) {
-                $inp['id'] = $row['B'];
-                $inp['loai_giay'] = $row['D'];
-                $inp['fsc'] = $row['E'] == 'X' ? 1 : 0;
-                $inp['kho_giay'] = $row['F'];
-                $inp['dinh_luong'] = $row['G'];
-                $inp['so_kg'] = (int)str_replace(',', '', $row['Q']);
-                $inp['so_kg_dau'] = (int)str_replace(',', '', $row['I']);
-                $inp['ma_cuon_ncc'] = $row['M'];
-                $inp['ma_vat_tu'] = $row['D'] . '(' . $row['G'] . ')' . $row['F'];;
-                Material::create($inp);
-                $input['material_id'] = $row['B'];
-                $input['so_kg_nhap'] = (int)str_replace(',', '', $row['N']);
-                $input['tg_nhap'] = date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $row['J'])));
-                $input['importer_id'] = 1;
-                WarehouseMLTLog::create($input);
-            }
-        }
-        return $this->success([], 'Upload thành công');
-    }
-    public function updateRole(Request $request)
-    {
-        $fields = Field::whereNotIn('id', ['25', '26'])->get();
-        foreach ($fields as $key => $field) {
-            $inp['table_id'] = 1;
-            $inp['field_id'] = $field->id;
-            $inp['role_id'] = 37;
-            FieldRole::create($inp);
-        }
-        return true;
+        Route::controller(self::class)->group(function () {
+            Route::get('orders/list', [OrderController::class, 'getOrders']);
+            Route::patch('orders/update', [OrderController::class, 'updateOrders'])->middleware('check.permission:edit-order');
+            Route::post('orders/create', [OrderController::class, 'createOrder'])->middleware('check.permission:edit-order');
+            Route::delete('orders/delete', [OrderController::class, 'deleteOrders'])->middleware('check.permission:edit-order');
+            Route::get('orders/export', [OrderController::class, 'exportOrders']);
+            Route::post('orders/import', [OrderController::class, 'importOrders'])->middleware('check.permission:edit-order');
+            Route::post('orders/split', [OrderController::class, 'splitOrders'])->middleware('check.permission:edit-order');
+            Route::post('orders/restore', [OrderController::class, 'restoreOrders'])->middleware('check.permission:edit-order');
+        });
     }
 
     public function getOrders(Request $request)

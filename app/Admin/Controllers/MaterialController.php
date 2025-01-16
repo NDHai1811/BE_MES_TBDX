@@ -20,10 +20,23 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 class MaterialController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('material/list', [MaterialController::class, 'getMaterials']);
+            Route::patch('material/update', [MaterialController::class, 'updateMaterial']);
+            Route::post('material/create', [MaterialController::class, 'createMaterial']);
+            Route::delete('material/delete', [MaterialController::class, 'deleteMaterials']);
+            Route::get('material/export', [MaterialController::class, 'exportMaterials']);
+            Route::post('material/import', [MaterialController::class, 'importMaterials']);
+        });
+    }
 
     public function getMaterials(Request $request)
     {

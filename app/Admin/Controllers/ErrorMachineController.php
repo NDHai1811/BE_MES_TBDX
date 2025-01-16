@@ -15,10 +15,23 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use App\Models\Line;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 class ErrorMachineController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('error-machines/list', [ErrorMachineController::class, 'getErrorMachines']);
+            Route::patch('error-machines/update', [ErrorMachineController::class, 'updateErrorMachine']);
+            Route::post('error-machines/create', [ErrorMachineController::class, 'createErrorMachine']);
+            Route::delete('error-machines/delete', [ErrorMachineController::class, 'deleteErrorMachines']);
+            Route::get('error-machines/export', [ErrorMachineController::class, 'exportErrorMachines']);
+            Route::post('error-machines/import', [ErrorMachineController::class, 'importErrorMachines']);
+        });
+    }
 
     public function getErrorMachines(Request $request)
     {

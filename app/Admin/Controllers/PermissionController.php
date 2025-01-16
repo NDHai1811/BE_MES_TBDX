@@ -13,10 +13,23 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
+use Illuminate\Support\Facades\Route;
 
 class PermissionController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('permissions/list', [PermissionController::class, 'getPermissions']);
+            Route::patch('permissions/update', [PermissionController::class, 'updatePermission']);
+            Route::post('permissions/create', [PermissionController::class, 'createPermission']);
+            Route::delete('permissions/delete', [PermissionController::class, 'deletePermissions']);
+            Route::get('permissions/export', [PermissionController::class, 'exportPermissions']);
+            Route::post('permissions/import', [PermissionController::class, 'importPermissions']);
+        });
+    }
 
     public function getPermissions(Request $request){
         $query = Permission::orderBy('created_at', 'desc');

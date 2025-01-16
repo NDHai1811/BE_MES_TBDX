@@ -20,11 +20,24 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 class VOCRegisterController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('voc', [VOCRegisterController::class, 'getList']);
+            Route::post('voc', [VOCRegisterController::class, 'createRecord']);
+            Route::patch('voc/{id}', [VOCRegisterController::class, 'updateRecord']);
+            Route::delete('voc/{id}', [VOCRegisterController::class, 'deleteRecord']);
+            Route::post('voc/upload-file', [VOCRegisterController::class, 'uploadFile']);
+            Route::post('voc/clear-unused-files', [VOCRegisterController::class, 'clearUnusedFiles']);
+        });
+    }
 
     public function getList(Request $request)
     {

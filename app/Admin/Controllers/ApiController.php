@@ -6199,26 +6199,6 @@ class ApiController extends AdminController
         return $this->success($data);
     }
 
-    public function createBuyers(Request $request)
-    {
-        $input = $request->all();
-        $record = Buyer::create($input);
-        return $this->success($record, 'Cập nhật thành công');
-    }
-
-    public function updateBuyers(Request $request)
-    {
-        $input = $request->all();
-        $record = Buyer::find($input['id'])->update($input);
-        return $this->success($record, 'Cập nhật thành công');
-    }
-
-    public function deleteBuyers(Request $request)
-    {
-        Buyer::where('id', $request->id)->delete();
-        return $this->success([], 'Xóa thành công');
-    }
-
     function mappingSong($buyer_id, $lo_sx, $kho_tong)
     {
         $buyer = Buyer::find($buyer_id);

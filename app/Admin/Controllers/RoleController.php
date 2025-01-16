@@ -14,10 +14,25 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 class RoleController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('roles/tree', [RoleController::class, 'getRoles']);
+            Route::get('roles/list', [RoleController::class, 'getRolesList']);
+            Route::get('roles/permissions', [RoleController::class, 'getPermissions']);
+            Route::patch('roles/update', [RoleController::class, 'updateRole']);
+            Route::post('roles/create', [RoleController::class, 'createRole']);
+            Route::delete('roles/delete', [RoleController::class, 'deleteRoles']);
+            Route::get('roles/export', [RoleController::class, 'exportRoles']);
+            Route::post('roles/import', [RoleController::class, 'importRoles']);
+        });
+    }
 
     public function getRoles(Request $request){
         $query = Role::with('children', 'permissions', 'parent')->select('*', 'id as key')->whereNull('parent_id')->orderBy('created_at');

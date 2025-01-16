@@ -19,10 +19,21 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
-class UserLineMachineController extends AdminController
+class UserMachineController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('machine-assignment/list', [UserMachineController::class, 'getMachineAssignment']);
+            Route::post('machine-assignment/create', [UserMachineController::class, 'createMachineAssignment']);
+            Route::post('machine-assignment/delete', [UserMachineController::class, 'deleteMachineAssignment']);
+            Route::patch('machine-assignment/update', [UserMachineController::class, 'updateMachineAssignment']);
+        });
+    }
 
     public function getMachineAssignment(Request $request){
         $input = $request->all();
@@ -54,7 +65,7 @@ class UserLineMachineController extends AdminController
             DB::beginTransaction();
             $user_line = UserLine::updateOrCreate(
                 ['user_id'=>$input['user_id']],
-                ['user_id'=>$input['user_id'], 'line_id'=>$input['line_id']],
+                ['line_id'=>$input['line_id']],
             );
             if(isset($input['machine_id'])){
                 UserMachine::where('user_id', $input['user_id'])->delete();

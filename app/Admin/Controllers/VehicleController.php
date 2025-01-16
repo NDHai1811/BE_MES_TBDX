@@ -15,11 +15,24 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 class VehicleController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('vehicles/list', [VehicleController::class, 'getVehicles']);
+            Route::patch('vehicles/update', [VehicleController::class, 'updateVehicles']);
+            Route::post('vehicles/create', [VehicleController::class, 'createVehicles']);
+            Route::delete('vehicles/delete', [VehicleController::class, 'deleteVehicles']);
+            Route::get('vehicles/export', [VehicleController::class, 'exportVehicles']);
+            Route::post('vehicles/import', [VehicleController::class, 'importVehicles']);
+        });
+    }
 
     public function getVehicles(Request $request)
     {
@@ -116,7 +129,7 @@ class VehicleController extends AdminController
                 $q->where('name', 'like', "%$request->driver_name%");
             });
         }
-        $records = $query->get();
+        $records = $query->get()->all();
         foreach ($records as $record) {
             $record->user1_name = $record->driver->name ?? "";
             $record->user1_username = $record->driver->username ?? "";
@@ -195,7 +208,7 @@ class VehicleController extends AdminController
         $sheet->getRowDimension(1)->setRowHeight(40);
         $table_col = 1;
         $table_row = $start_row + 2;
-        foreach ($records->toArray() as $key => $row) {
+        foreach ($records as $key => $row) {
             $table_col = 1;
             $row = (array)$row;
             $sheet->setCellValue([1, $table_row], $key + 1)->getStyle([1, $table_row])->applyFromArray($centerStyle);

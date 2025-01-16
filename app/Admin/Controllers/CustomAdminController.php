@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\CustomUser;
 use App\Models\Department;
 use Encore\Admin\Controllers\AdminController;
@@ -14,127 +15,28 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 class CustomAdminController extends AdminController
 {
     use API;
-    /**
-     * {@inheritdoc}
-     */
-    protected function title()
+    public static function registerRoutes()
     {
-        return trans('admin.administrator');
-    }
-
-    /**
-     * Make a grid builder.
-     *
-     * @return Grid
-     */
-    protected function grid()
-    {
-        $userModel = config('admin.database.users_model');
-
-        $grid = new Grid(new $userModel());
-
-        // $grid->column('id', 'ID')->sortable();
-        $grid->column('username', trans('Tài khoản đăng nhập'));
-        $grid->column('name', trans('Họ tên'));
-        $grid->column('roles', trans('Bộ phận'))->pluck('name')->label();
-        // $grid->column('permissions', trans('Tổ'))->pluck('name')->label();
-
-        $grid->actions(function (Grid\Displayers\Actions $actions) {
-            if ($actions->getKey() == 1) {
-                $actions->disableDelete();
-            }
+        Route::controller(self::class)->group(function () {
+            Route::get('users/list', [CustomAdminController::class, 'getUsers']);
+            Route::get('users/roles', [CustomAdminController::class, 'getUserRoles']);
+            Route::patch('users/update', [CustomAdminController::class, 'updateUsers']);
+            Route::post('users/create', [CustomAdminController::class, 'createUsers']);
+            Route::delete('users/delete', [CustomAdminController::class, 'deleteUsers']);
+            Route::get('users/export', [CustomAdminController::class, 'exportUsers']);
+            Route::post('users/import', [CustomAdminController::class, 'importUsers']);
+            Route::get('profile', [CustomAdminController::class, 'profile']);
         });
-
-        $grid->tools(function (Grid\Tools $tools) {
-            $tools->batch(function (Grid\Tools\BatchActions $actions) {
-                $actions->disableDelete();
-            });
-        });
-
-        return $grid;
-    }
-
-    /**
-     * Make a show builder.
-     *
-     * @param mixed $id
-     *
-     * @return Show
-     */
-    protected function detail($id)
-    {
-        $userModel = config('admin.database.users_model');
-
-        $show = new Show($userModel::findOrFail($id));
-
-        $show->field('id', 'ID');
-        $show->field('username', trans('admin.username'));
-        $show->field('name', trans('admin.name'));
-        $show->field('roles', trans('admin.roles'))->as(function ($roles) {
-            return $roles->pluck('name');
-        })->label();
-        // $show->field('permissions', trans('admin.permissions'))->as(function ($permission) {
-        //     return $permission->pluck('name');
-        // })->label();
-        $show->field('created_at', trans('admin.created_at'));
-        $show->field('updated_at', trans('admin.updated_at'));
-
-        return $show;
-    }
-
-    /**
-     * Make a form builder.
-     *
-     * @return Form
-     */
-    public function form()
-    {
-        $userModel = config('admin.database.users_model');
-        $permissionModel = config('admin.database.permissions_model');
-        $roleModel = config('admin.database.roles_model');
-
-        $form = new Form(new $userModel());
-
-        $userTable = config('admin.database.users_table');
-        $connection = config('admin.database.connection');
-
-        $form->display('id', 'ID');
-        $form->text('username', trans('admin.username'))
-            ->creationRules(['required', "unique:{$connection}.{$userTable}"])
-            ->updateRules(['required', "unique:{$connection}.{$userTable},username,{{id}}"]);
-
-        $form->text('name', trans('admin.name'))->rules('required');
-        $form->image('avatar', trans('admin.avatar'));
-        $form->password('password', trans('admin.password'))->rules('required|confirmed');
-        $form->password('password_confirmation', trans('admin.password_confirmation'))->rules('required')
-            ->default(function ($form) {
-                return $form->model()->password;
-            });
-
-        $form->ignore(['password_confirmation']);
-
-        $form->multipleSelect('roles', trans('admin.roles'))->options($roleModel::all()->pluck('name', 'id'));
-        // $form->multipleSelect('permissions', trans('admin.permissions'))->options($permissionModel::all()->pluck('name', 'id'));
-
-        $form->display('created_at', trans('admin.created_at'));
-        $form->display('updated_at', trans('admin.updated_at'));
-
-        $form->saving(function (Form $form) {
-            if ($form->password && $form->model()->password != $form->password) {
-                $form->password = Hash::make($form->password);
-            }
-        });
-
-        return $form;
     }
 
     public function getUsers(Request $request)
     {
-        $query = CustomUser::with('roles');
+        $query = CustomUser::with('roles', 'department');
         if (!isset($request->all_user)) {
             $query->whereNull('deleted_at');
         }
@@ -149,12 +51,13 @@ class CustomAdminController extends AdminController
                 $q->where('name', 'like', "$request->department_name%");
             });
         }
-        $users = $query->with('department')->get();
+        $records = $query->paginate($request->pageSize ?? null);
+        $users = $records->items();
         foreach ($users as $key => $user) {
             $user->usage_time = round($user->usage_time_in_day / 60);
             $user->department_name = $user->department->name ?? "";
         }
-        return $this->success($users);
+        return $this->success(['data' => $users, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function getUserRoles(Request $request)
     {

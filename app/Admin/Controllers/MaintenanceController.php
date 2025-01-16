@@ -13,10 +13,24 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
+use Illuminate\Support\Facades\Route;
 
 class MaintenanceController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('maintenance/list', [MaintenanceController::class, 'getMaintenance']);
+            Route::get('maintenance/detail', [MaintenanceController::class, 'getMaintenanceDetail']);
+            Route::patch('maintenance/update', [MaintenanceController::class, 'updateMaintenance']);
+            Route::post('maintenance/create', [MaintenanceController::class, 'createMaintenance']);
+            Route::post('maintenance/delete', [MaintenanceController::class, 'deleteMaintenance']);
+            Route::get('maintenance/export', [MaintenanceController::class, 'exportMaintenance']);
+            Route::post('maintenance/import', [MaintenanceController::class, 'importMaintenance']);
+        });
+    }
 
     public function getMaintenance(Request $request){
         $query = Maintenance::with('machine')->orderBy('created_at');

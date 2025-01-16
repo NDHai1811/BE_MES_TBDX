@@ -16,11 +16,22 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
+use Illuminate\Support\Facades\Route;
 use stdClass;
 
 class ShiftAssignmentController extends AdminController
 {
     use API;
+
+    public static function registerRoutes()
+    {
+        Route::controller(self::class)->group(function () {
+            Route::get('shift-assignment/list', [ShiftAssignmentController::class, 'getShiftAssignment']);
+            Route::post('shift-assignment/create', [ShiftAssignmentController::class, 'createShiftAssignment']);
+            Route::delete('shift-assignment/delete', [ShiftAssignmentController::class, 'deleteShiftAssignment']);
+            Route::patch('shift-assignment/update', [ShiftAssignmentController::class, 'updateShiftAssignment']);
+        });
+    }
 
     public function getShiftAssignment(Request $request)
     {

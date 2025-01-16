@@ -3,18 +3,32 @@
 use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\ApiController;
+use App\Admin\Controllers\BuyerController;
 use App\Admin\Controllers\CustomAdminController;
+use App\Admin\Controllers\CustomerController;
 use App\Admin\Controllers\DeliveryNoteController;
 use App\Admin\Controllers\DepartmentController;
+use App\Admin\Controllers\ErrorController;
+use App\Admin\Controllers\ErrorMachineController;
 use App\Admin\Controllers\InfoCongDoanController;
+use App\Admin\Controllers\KhuonController;
 use App\Admin\Controllers\KPIController;
+use App\Admin\Controllers\LayoutController;
+use App\Admin\Controllers\LineController;
 use App\Admin\Controllers\LSXPalletController;
+use App\Admin\Controllers\MachineController;
+use App\Admin\Controllers\MaintenanceController;
+use App\Admin\Controllers\MaterialController;
 use App\Admin\Controllers\MESUsageRateController;
 use App\Admin\Controllers\OrderController;
+use App\Admin\Controllers\PermissionController;
 use App\Admin\Controllers\RoleController;
 use App\Admin\Controllers\ShiftAssignmentController;
 use App\Admin\Controllers\ShiftController;
+use App\Admin\Controllers\TestCriteriaController;
 use App\Admin\Controllers\UserLineMachineController;
+use App\Admin\Controllers\UserMachineController;
+use App\Admin\Controllers\VehicleController;
 use App\Admin\Controllers\VOCRegisterController;
 use App\Admin\Controllers\VOCTypeController;
 use Encore\Admin\Facades\Admin;
@@ -250,17 +264,6 @@ Route::group([
     'middleware'    => [],
     'as'            => "mobile/api" . '.',
 ], function (Router $router) {
-
-    $router->post('/fix-order', [OrderController::class, 'fixBug']);
-    $router->get('/update-data', [OrderController::class, 'updateData']);
-    $router->get('/update-role', [OrderController::class, 'updateRole']);
-
-    $router->post('/machine/update', [ApiMobileController::class, 'exMachineUpdate']);
-    $router->get('/material/barcode', [ApiMobileController::class, 'inNhanMuc']);
-    $router->get('/tem/print', [ApiMobileController::class, 'temPrint']);
-    $router->get('/location/barcode', [ApiMobileController::class, 'locationBarcode']);
-
-    $router->get('/product/barcode', [ApiMobileController::class, 'productBarcode']);
     $router->post('/upload-ke-hoach-xuat-kho-tong', [ApiMobileController::class, 'uploadKHXKT']);
     $router->post('/upload-ke-hoach-san-xuat', [ApiMobileController::class, 'uploadKHSX']);
     $router->post('/upload-ton-kho', [ApiMobileController::class, 'uploadTonKho']);
@@ -284,9 +287,7 @@ Route::group([
     $router->get('/export/machine_error', [ApiUIController::class, 'exportMachineError']);
     $router->get('/export/thong-so-may', [ApiUIController::class, 'exportThongSoMay']);
     $router->get('/export/warehouse/history', [ApiUIController::class, 'exportHistoryWarehouse']);
-    $router->get('/export/qc/history/pqc', [ApiUIController::class, 'exportQCHistoryPQC']);
     $router->get('/export/oqc', [ApiUIController::class, 'exportOQC']);
-    $router->get('/export/pqc', [ApiController::class, 'exportPQC']);
     $router->get('/export/qc-history', [ApiUIController::class, 'exportQCHistory']);
     $router->get('/export/report-qc', [ApiUIController::class, 'exportReportQC']);
     $router->get('/export/report-produce-history', [ApiUIController::class, 'exportReportProduceHistory']);
@@ -510,205 +511,66 @@ Route::group([
 //Unrequired route
 Route::group([
     'prefix'        => "/api",
-    'middleware'    => "auth:sanctum",
+    'middleware'    => [],
     'as'            => '',
 ], function (Router $router) {
-    $router->post('locate-by-supplier', [ApiController::class, 'phanKhuTheoNCC']);
-    $router->post('import/tieu_chuan_ncc', [ApiController::class, 'importTieuChuanNCC']);
-    $router->post('locator-mtl-map-import', [ApiController::class, 'importLocatorMLTMap']);
-    $router->post('orders/import-from-plan', [App\Admin\Controllers\OrderController::class, 'importOrdersFromPLan']);
 
-    $router->get('info-cong-doan/list', [InfoCongDoanController::class, 'getInfoCongDoan']);
-    $router->post('info-cong-doan/update', [InfoCongDoanController::class, 'updateInfoCongDoan']);
-    $router->get('info-cong-doan/export', [InfoCongDoanController::class, 'exportInfoCongDoan']);
-    $router->post('info-cong-doan/import', [InfoCongDoanController::class, 'importInfoCongDoan']);
+    InfoCongDoanController::registerRoutes();//Thông tin sản lượng lô
 
-    $router->get('machines/list', [App\Admin\Controllers\MachineController::class, 'getMachines']);
-    $router->patch('machines/update', [App\Admin\Controllers\MachineController::class, 'updateMachine']);
-    $router->post('machines/create', [App\Admin\Controllers\MachineController::class, 'createMachine']);
-    $router->delete('machines/delete', [App\Admin\Controllers\MachineController::class, 'deleteMachines']);
-    $router->get('machines/export', [App\Admin\Controllers\MachineController::class, 'exportMachines']);
-    $router->post('machines/import', [App\Admin\Controllers\MachineController::class, 'importMachines']);
+    MachineController::registerRoutes();//Máy
 
-    $router->get('spec-product/list', [App\Admin\Controllers\ProductController::class, 'getSpecProduct']);
-    $router->patch('spec-product/update', [App\Admin\Controllers\ProductController::class, 'updateSpecProduct']);
-    $router->post('spec-product/create', [App\Admin\Controllers\ProductController::class, 'createSpecProduct']);
-    $router->delete('spec-product/delete', [App\Admin\Controllers\ProductController::class, 'deleteSpecProduct']);
-    $router->get('spec-product/export', [App\Admin\Controllers\ProductController::class, 'exportSpecProduct']);
-    $router->post('spec-product/import', [App\Admin\Controllers\ProductController::class, 'importSpecProduct']);
+    ErrorController::registerRoutes();//Lỗi công đoạn
 
-    $router->get('errors/list', [App\Admin\Controllers\ErrorController::class, 'getErrors']);
-    $router->patch('errors/update', [App\Admin\Controllers\ErrorController::class, 'updateErrors']);
-    $router->post('errors/create', [App\Admin\Controllers\ErrorController::class, 'createErrors']);
-    $router->delete('errors/delete', [App\Admin\Controllers\ErrorController::class, 'deleteErrors']);
-    $router->get('errors/export', [App\Admin\Controllers\ErrorController::class, 'exportErrors']);
-    $router->post('errors/import', [App\Admin\Controllers\ErrorController::class, 'importErrors']);
+    TestCriteriaController::registerRoutes();//Chỉ tiêu kiểm tra
 
-    $router->get('test_criteria/list', [App\Admin\Controllers\TestCriteriaController::class, 'getTestCriteria']);
-    $router->patch('test_criteria/update', [App\Admin\Controllers\TestCriteriaController::class, 'updateTestCriteria']);
-    $router->post('test_criteria/create', [App\Admin\Controllers\TestCriteriaController::class, 'createTestCriteria']);
-    $router->delete('test_criteria/delete', [App\Admin\Controllers\TestCriteriaController::class, 'deleteTestCriteria']);
-    $router->get('test_criteria/export', [App\Admin\Controllers\TestCriteriaController::class, 'exportTestCriteria']);
-    $router->post('test_criteria/import', [App\Admin\Controllers\TestCriteriaController::class, 'importTestCriteriaVer2']);
+    LineController::registerRoutes();//Công đoạn
 
-    $router->get('cong-doan/list', [App\Admin\Controllers\LineController::class, 'getLine']);
-    $router->patch('cong-doan/update', [App\Admin\Controllers\LineController::class, 'updateLine']);
-    $router->post('cong-doan/create', [App\Admin\Controllers\LineController::class, 'createLine']);
-    $router->delete('cong-doan/delete', [App\Admin\Controllers\LineController::class, 'deleteLine']);
-    $router->get('cong-doan/export', [App\Admin\Controllers\LineController::class, 'exportLine']);
-    $router->post('cong-doan/import', [App\Admin\Controllers\LineController::class, 'importLine']);
+    CustomAdminController::registerRoutes();//Người dùng
 
-    $router->get('users/list', [App\Admin\Controllers\CustomAdminController::class, 'getUsers']);
-    $router->get('users/roles', [App\Admin\Controllers\CustomAdminController::class, 'getUserRoles']);
-    $router->patch('users/update', [App\Admin\Controllers\CustomAdminController::class, 'updateUsers']);
-    $router->post('users/create', [App\Admin\Controllers\CustomAdminController::class, 'createUsers']);
-    $router->delete('users/delete', [App\Admin\Controllers\CustomAdminController::class, 'deleteUsers']);
-    $router->get('users/export', [App\Admin\Controllers\CustomAdminController::class, 'exportUsers']);
-    $router->post('users/import', [App\Admin\Controllers\CustomAdminController::class, 'importUsers']);
+    RoleController::registerRoutes();//Vai trò
 
-    $router->get('roles/tree', [App\Admin\Controllers\RoleController::class, 'getRoles']);
-    $router->get('roles/list', [App\Admin\Controllers\RoleController::class, 'getRolesList']);
-    $router->get('roles/permissions', [App\Admin\Controllers\RoleController::class, 'getPermissions']);
-    $router->patch('roles/update', [App\Admin\Controllers\RoleController::class, 'updateRole']);
-    $router->post('roles/create', [App\Admin\Controllers\RoleController::class, 'createRole']);
-    $router->delete('roles/delete', [App\Admin\Controllers\RoleController::class, 'deleteRoles']);
-    $router->get('roles/export', [App\Admin\Controllers\RoleController::class, 'exportRoles']);
-    $router->post('roles/import', [App\Admin\Controllers\RoleController::class, 'importRoles']);
+    PermissionController::registerRoutes();//Quyền
 
-    $router->get('permissions/list', [App\Admin\Controllers\PermissionController::class, 'getPermissions']);
-    $router->patch('permissions/update', [App\Admin\Controllers\PermissionController::class, 'updatePermission']);
-    $router->post('permissions/create', [App\Admin\Controllers\PermissionController::class, 'createPermission']);
-    $router->delete('permissions/delete', [App\Admin\Controllers\PermissionController::class, 'deletePermissions']);
-    $router->get('permissions/export', [App\Admin\Controllers\PermissionController::class, 'exportPermissions']);
-    $router->post('permissions/import', [App\Admin\Controllers\PermissionController::class, 'importPermissions']);
+    ErrorMachineController::registerRoutes();//Lỗi máy
 
-    $router->get('error-machines/list', [App\Admin\Controllers\ErrorMachineController::class, 'getErrorMachines']);
-    $router->patch('error-machines/update', [App\Admin\Controllers\ErrorMachineController::class, 'updateErrorMachine']);
-    $router->post('error-machines/create', [App\Admin\Controllers\ErrorMachineController::class, 'createErrorMachine']);
-    $router->delete('error-machines/delete', [App\Admin\Controllers\ErrorMachineController::class, 'deleteErrorMachines']);
-    $router->get('error-machines/export', [App\Admin\Controllers\ErrorMachineController::class, 'exportErrorMachines']);
-    $router->post('error-machines/import', [App\Admin\Controllers\ErrorMachineController::class, 'importErrorMachines']);
+    MaterialController::registerRoutes();//Nguyên vật liệu
 
-    $router->get('material/list', [App\Admin\Controllers\MaterialController::class, 'getMaterials']);
-    $router->patch('material/update', [App\Admin\Controllers\MaterialController::class, 'updateMaterial']);
-    $router->post('material/create', [App\Admin\Controllers\MaterialController::class, 'createMaterial']);
-    $router->delete('material/delete', [App\Admin\Controllers\MaterialController::class, 'deleteMaterials']);
-    // $router->get('material/export', [App\Admin\Controllers\MaterialController::class, 'exportMaterials']);
-    // $router->post('material/import', [App\Admin\Controllers\MaterialController::class, 'importMaterials']);
+    KhuonController::registerRoutes();//Khuôn
 
-    $router->get('warehouses/list', [App\Admin\Controllers\WarehouseController::class, 'getWarehouses']);
-    $router->patch('warehouses/update', [App\Admin\Controllers\WarehouseController::class, 'updateWarehouse']);
-    $router->post('warehouses/create', [App\Admin\Controllers\WarehouseController::class, 'createWarehouse']);
-    $router->delete('warehouses/delete', [App\Admin\Controllers\WarehouseController::class, 'deleteWarehouses']);
-    $router->get('warehouses/export', [App\Admin\Controllers\WarehouseController::class, 'exportWarehouses']);
-    $router->post('warehouses/import', [App\Admin\Controllers\WarehouseController::class, 'importWarehouses']);
+    MaintenanceController::registerRoutes();//Bảo trì
 
-    $router->get('cells/list', [App\Admin\Controllers\CellController::class, 'getCells']);
-    $router->patch('cells/update', [App\Admin\Controllers\CellController::class, 'updateCell']);
-    $router->post('cells/create', [App\Admin\Controllers\CellController::class, 'createCell']);
-    $router->delete('cells/delete', [App\Admin\Controllers\CellController::class, 'deleteCells']);
-    $router->get('cells/export', [App\Admin\Controllers\CellController::class, 'exportCells']);
-    $router->post('cells/import', [App\Admin\Controllers\CellController::class, 'importCells']);
+    OrderController::registerRoutes();//Đơn hàng
 
-    $router->get('khuon/list', [App\Admin\Controllers\KhuonController::class, 'getKhuon']);
-    $router->patch('khuon/update', [App\Admin\Controllers\KhuonController::class, 'updateKhuon']);
-    $router->post('khuon/create', [App\Admin\Controllers\KhuonController::class, 'createKhuon']);
-    $router->delete('khuon/delete', [App\Admin\Controllers\KhuonController::class, 'deleteKhuon']);
-    $router->get('khuon/export', [App\Admin\Controllers\KhuonController::class, 'exportKhuon']);
-    $router->post('khuon/import', [App\Admin\Controllers\KhuonController::class, 'importKhuon']);
+    CustomerController::registerRoutes();//Khách hàng
 
-    // $router->get('jig/list', [App\Admin\Controllers\JigController::class, 'getJig']);
-    // $router->patch('jig/update', [App\Admin\Controllers\JigController::class, 'updateJig']);
-    // $router->post('jig/create', [App\Admin\Controllers\JigController::class, 'createJig']);
-    // $router->post('jig/delete', [App\Admin\Controllers\JigController::class, 'deleteJig']);
-    // $router->get('jig/export', [App\Admin\Controllers\JigController::class, 'exportJig']);
-    // $router->post('jig/import', [App\Admin\Controllers\JigController::class, 'importJig']);
+    BuyerController::registerRoutes();//Buyer
 
-    $router->get('maintenance/list', [App\Admin\Controllers\MaintenanceController::class, 'getMaintenance']);
-    $router->get('maintenance/detail', [App\Admin\Controllers\MaintenanceController::class, 'getMaintenanceDetail']);
-    $router->patch('maintenance/update', [App\Admin\Controllers\MaintenanceController::class, 'updateMaintenance']);
-    $router->post('maintenance/create', [App\Admin\Controllers\MaintenanceController::class, 'createMaintenance']);
-    $router->post('maintenance/delete', [App\Admin\Controllers\MaintenanceController::class, 'deleteMaintenance']);
-    $router->get('maintenance/export', [App\Admin\Controllers\MaintenanceController::class, 'exportMaintenance']);
-    $router->post('maintenance/import', [App\Admin\Controllers\MaintenanceController::class, 'importMaintenance']);
+    LayoutController::registerRoutes();//Layout
 
-    $router->get('orders/list', [App\Admin\Controllers\OrderController::class, 'getOrders']);
-    $router->patch('orders/update', [App\Admin\Controllers\OrderController::class, 'updateOrders'])->middleware('check.permission:edit-order');
-    $router->post('orders/create', [App\Admin\Controllers\OrderController::class, 'createOrder'])->middleware('check.permission:edit-order');;
-    $router->delete('orders/delete', [App\Admin\Controllers\OrderController::class, 'deleteOrders'])->middleware('check.permission:edit-order');;
-    $router->get('orders/export', [App\Admin\Controllers\OrderController::class, 'exportOrders']);
-    $router->post('orders/import', [App\Admin\Controllers\OrderController::class, 'importOrders'])->middleware('check.permission:edit-order');;
-    $router->post('orders/split', [App\Admin\Controllers\OrderController::class, 'splitOrders'])->middleware('check.permission:edit-order');;
-    $router->post('orders/restore', [App\Admin\Controllers\OrderController::class, 'restoreOrders'])->middleware('check.permission:edit-order');;
+    VehicleController::registerRoutes();//Xe
 
-    $router->get('customer/list', [App\Admin\Controllers\CustomerController::class, 'getCustomerByShortName']);
-    $router->patch('customer/update', [App\Admin\Controllers\CustomerController::class, 'updateCustomer']);
-    $router->post('customer/create', [App\Admin\Controllers\CustomerController::class, 'createCustomer']);
-    $router->delete('customer/delete', [App\Admin\Controllers\CustomerController::class, 'deleteCustomer']);
-    $router->get('customer/export', [App\Admin\Controllers\CustomerController::class, 'exportCustomer']);
-    $router->post('customer/import', [App\Admin\Controllers\CustomerController::class, 'importCustomer']);
-    $router->get('real-customer-list', [App\Admin\Controllers\CustomerController::class,'getCustomers']);
+    UserMachineController::registerRoutes();//Phân bổ máy cho người dùng
 
-    $router->post('buyers/create', [ApiController::class, 'createBuyers']);
-    $router->patch('buyers/update', [ApiController::class, 'updateBuyers']);
-    $router->delete('buyers/delete', [ApiController::class, 'deleteBuyers']);
-    $router->get('buyers/export', [ApiController::class, 'exportBuyers']);
+    ShiftAssignmentController::registerRoutes();//Phân ca làm việc
 
-    $router->post('layouts/create', [ApiController::class, 'createLayouts']);
-    $router->patch('layouts/update', [ApiController::class, 'updateLayouts']);
-    $router->delete('layouts/delete', [ApiController::class, 'deleteLayouts']);
+    VOCTypeController::registerRoutes();//Loại VOC
 
-    $router->get('vehicles/list', [App\Admin\Controllers\VehicleController::class, 'getVehicles']);
-    $router->patch('vehicles/update', [App\Admin\Controllers\VehicleController::class, 'updateVehicles']);
-    $router->post('vehicles/create', [App\Admin\Controllers\VehicleController::class, 'createVehicles']);
-    $router->delete('vehicles/delete', [App\Admin\Controllers\VehicleController::class, 'deleteVehicles']);
-    $router->get('vehicles/export', [App\Admin\Controllers\VehicleController::class, 'exportVehicles']);
-    $router->post('vehicles/import', [App\Admin\Controllers\VehicleController::class, 'importVehicles']);
+    VOCRegisterController::registerRoutes();//VOC
 
-    $router->get('machine-assignment/list', [UserLineMachineController::class, 'getMachineAssignment']);
-    $router->post('machine-assignment/create', [UserLineMachineController::class, 'createMachineAssignment']);
-    $router->post('machine-assignment/delete', [UserLineMachineController::class, 'deleteMachineAssignment']);
-    $router->patch('machine-assignment/update', [UserLineMachineController::class, 'updateMachineAssignment']);
+    KPIController::registerRoutes();//KPI chart
 
-    $router->get('shift-assignment/list', [ShiftAssignmentController::class, 'getShiftAssignment']);
-    $router->post('shift-assignment/create', [ShiftAssignmentController::class, 'createShiftAssignment']);
-    $router->delete('shift-assignment/delete', [ShiftAssignmentController::class, 'deleteShiftAssignment']);
-    $router->patch('shift-assignment/update', [ShiftAssignmentController::class, 'updateShiftAssignment']);
+    DepartmentController::registerRoutes();//Bộ phận
 
     $router->get('shift/list', [ShiftController::class, 'getShift']);
-
-    $router->post('parameters/import', [App\Admin\Controllers\MachineController::class, 'parametersImport']);
-    $router->get('update-order', [ApiUIController::class, 'updateHGOrder']);
-    
     $router->post('manufacture/production-plan/import', [ApiController::class, 'importKHSX']);
     $router->post('import/vehicle', [ApiUIController::class, 'importVehicle']);
     $router->post('update-tem', [ApiUIController::class, 'updateTem']);
     $router->post('import-khuon-link', [ApiUIController::class, 'importKhuonLink']);
     $router->post('upload-nhap-kho-nvl', [ApiController::class, 'uploadNKNVL']);
-
-    $router->get('voc-types', [VOCTypeController::class, 'getList']);
-    $router->get('voc', [VOCRegisterController::class, 'getList']);
-    $router->post('voc', [VOCRegisterController::class, 'createRecord']);
-    $router->patch('voc/{id}', [VOCRegisterController::class, 'updateRecord']);
-    $router->delete('voc/{id}', [VOCRegisterController::class, 'deleteRecord']);
-    $router->post('voc/upload-file', [VOCRegisterController::class, 'uploadFile']);
-    $router->post('voc/clear-unused-files', [VOCRegisterController::class, 'clearUnusedFiles']);
-
-    $router->get('kpi-ty-le-ke-hoach', [KPIController::class, 'kpiTyLeKeHoach']);
-    $router->get('kpi-ton-kho-nvl', [KPIController::class, 'kpiTonKhoNVL']);
-    $router->get('kpi-ty-le-ng-pqc', [KPIController::class, 'kpiTyLeNGPQC']);
-    $router->get('kpi-ty-le-van-hanh-thiet-bi', [KPIController::class, 'kpiTyLeVanHanh']);
-    $router->get('kpi-ty-le-ke-hoach-in', [KPIController::class, 'kpiTyLeKeHoachIn']);
-    $router->get('kpi-ty-le-loi-may', [KPIController::class, 'kpiTyLeLoiMay']);
-    $router->get('kpi-ty-le-ng-oqc', [KPIController::class, 'kpiTyLeNGOQC']);
-    $router->get('kpi-ton-kho-tp', [KPIController::class, 'kpiTonKhoTP']);
-
-    $router->get('departments/list', [DepartmentController::class, 'index']);
-    $router->post('departments/create', [DepartmentController::class, 'create']);
-    $router->delete('departments/delete', [DepartmentController::class, 'delete']);
-    $router->patch('departments/update', [DepartmentController::class, 'update']);
-
-    $router->get('profile', [CustomAdminController::class, 'profile']);
+    $router->post('locate-by-supplier', [ApiController::class, 'phanKhuTheoNCC']);
+    $router->post('import/tieu_chuan_ncc', [ApiController::class, 'importTieuChuanNCC']);
+    $router->post('locator-mtl-map-import', [ApiController::class, 'importLocatorMLTMap']);
+    $router->post('orders/import-from-plan', [App\Admin\Controllers\OrderController::class, 'importOrdersFromPLan']);
 });
 
 Route::group([
