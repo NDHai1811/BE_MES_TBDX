@@ -526,35 +526,35 @@ Route::group([
     $router->get('machines/list', [App\Admin\Controllers\MachineController::class, 'getMachines']);
     $router->patch('machines/update', [App\Admin\Controllers\MachineController::class, 'updateMachine']);
     $router->post('machines/create', [App\Admin\Controllers\MachineController::class, 'createMachine']);
-    $router->post('machines/delete', [App\Admin\Controllers\MachineController::class, 'deleteMachines']);
+    $router->delete('machines/delete', [App\Admin\Controllers\MachineController::class, 'deleteMachines']);
     $router->get('machines/export', [App\Admin\Controllers\MachineController::class, 'exportMachines']);
     $router->post('machines/import', [App\Admin\Controllers\MachineController::class, 'importMachines']);
 
     $router->get('spec-product/list', [App\Admin\Controllers\ProductController::class, 'getSpecProduct']);
     $router->patch('spec-product/update', [App\Admin\Controllers\ProductController::class, 'updateSpecProduct']);
     $router->post('spec-product/create', [App\Admin\Controllers\ProductController::class, 'createSpecProduct']);
-    $router->post('spec-product/delete', [App\Admin\Controllers\ProductController::class, 'deleteSpecProduct']);
+    $router->delete('spec-product/delete', [App\Admin\Controllers\ProductController::class, 'deleteSpecProduct']);
     $router->get('spec-product/export', [App\Admin\Controllers\ProductController::class, 'exportSpecProduct']);
     $router->post('spec-product/import', [App\Admin\Controllers\ProductController::class, 'importSpecProduct']);
 
     $router->get('errors/list', [App\Admin\Controllers\ErrorController::class, 'getErrors']);
     $router->patch('errors/update', [App\Admin\Controllers\ErrorController::class, 'updateErrors']);
     $router->post('errors/create', [App\Admin\Controllers\ErrorController::class, 'createErrors']);
-    $router->post('errors/delete', [App\Admin\Controllers\ErrorController::class, 'deleteErrors']);
+    $router->delete('errors/delete', [App\Admin\Controllers\ErrorController::class, 'deleteErrors']);
     $router->get('errors/export', [App\Admin\Controllers\ErrorController::class, 'exportErrors']);
     $router->post('errors/import', [App\Admin\Controllers\ErrorController::class, 'importErrors']);
 
     $router->get('test_criteria/list', [App\Admin\Controllers\TestCriteriaController::class, 'getTestCriteria']);
     $router->patch('test_criteria/update', [App\Admin\Controllers\TestCriteriaController::class, 'updateTestCriteria']);
     $router->post('test_criteria/create', [App\Admin\Controllers\TestCriteriaController::class, 'createTestCriteria']);
-    $router->post('test_criteria/delete', [App\Admin\Controllers\TestCriteriaController::class, 'deleteTestCriteria']);
+    $router->delete('test_criteria/delete', [App\Admin\Controllers\TestCriteriaController::class, 'deleteTestCriteria']);
     $router->get('test_criteria/export', [App\Admin\Controllers\TestCriteriaController::class, 'exportTestCriteria']);
     $router->post('test_criteria/import', [App\Admin\Controllers\TestCriteriaController::class, 'importTestCriteriaVer2']);
 
     $router->get('cong-doan/list', [App\Admin\Controllers\LineController::class, 'getLine']);
     $router->patch('cong-doan/update', [App\Admin\Controllers\LineController::class, 'updateLine']);
     $router->post('cong-doan/create', [App\Admin\Controllers\LineController::class, 'createLine']);
-    $router->post('cong-doan/delete', [App\Admin\Controllers\LineController::class, 'deleteLine']);
+    $router->delete('cong-doan/delete', [App\Admin\Controllers\LineController::class, 'deleteLine']);
     $router->get('cong-doan/export', [App\Admin\Controllers\LineController::class, 'exportLine']);
     $router->post('cong-doan/import', [App\Admin\Controllers\LineController::class, 'importLine']);
 
@@ -562,7 +562,7 @@ Route::group([
     $router->get('users/roles', [App\Admin\Controllers\CustomAdminController::class, 'getUserRoles']);
     $router->patch('users/update', [App\Admin\Controllers\CustomAdminController::class, 'updateUsers']);
     $router->post('users/create', [App\Admin\Controllers\CustomAdminController::class, 'createUsers']);
-    $router->post('users/delete', [App\Admin\Controllers\CustomAdminController::class, 'deleteUsers']);
+    $router->delete('users/delete', [App\Admin\Controllers\CustomAdminController::class, 'deleteUsers']);
     $router->get('users/export', [App\Admin\Controllers\CustomAdminController::class, 'exportUsers']);
     $router->post('users/import', [App\Admin\Controllers\CustomAdminController::class, 'importUsers']);
 
@@ -571,49 +571,49 @@ Route::group([
     $router->get('roles/permissions', [App\Admin\Controllers\RoleController::class, 'getPermissions']);
     $router->patch('roles/update', [App\Admin\Controllers\RoleController::class, 'updateRole']);
     $router->post('roles/create', [App\Admin\Controllers\RoleController::class, 'createRole']);
-    $router->post('roles/delete', [App\Admin\Controllers\RoleController::class, 'deleteRoles']);
+    $router->delete('roles/delete', [App\Admin\Controllers\RoleController::class, 'deleteRoles']);
     $router->get('roles/export', [App\Admin\Controllers\RoleController::class, 'exportRoles']);
     $router->post('roles/import', [App\Admin\Controllers\RoleController::class, 'importRoles']);
 
     $router->get('permissions/list', [App\Admin\Controllers\PermissionController::class, 'getPermissions']);
     $router->patch('permissions/update', [App\Admin\Controllers\PermissionController::class, 'updatePermission']);
     $router->post('permissions/create', [App\Admin\Controllers\PermissionController::class, 'createPermission']);
-    $router->post('permissions/delete', [App\Admin\Controllers\PermissionController::class, 'deletePermissions']);
+    $router->delete('permissions/delete', [App\Admin\Controllers\PermissionController::class, 'deletePermissions']);
     $router->get('permissions/export', [App\Admin\Controllers\PermissionController::class, 'exportPermissions']);
     $router->post('permissions/import', [App\Admin\Controllers\PermissionController::class, 'importPermissions']);
 
     $router->get('error-machines/list', [App\Admin\Controllers\ErrorMachineController::class, 'getErrorMachines']);
     $router->patch('error-machines/update', [App\Admin\Controllers\ErrorMachineController::class, 'updateErrorMachine']);
     $router->post('error-machines/create', [App\Admin\Controllers\ErrorMachineController::class, 'createErrorMachine']);
-    $router->post('error-machines/delete', [App\Admin\Controllers\ErrorMachineController::class, 'deleteErrorMachines']);
+    $router->delete('error-machines/delete', [App\Admin\Controllers\ErrorMachineController::class, 'deleteErrorMachines']);
     $router->get('error-machines/export', [App\Admin\Controllers\ErrorMachineController::class, 'exportErrorMachines']);
     $router->post('error-machines/import', [App\Admin\Controllers\ErrorMachineController::class, 'importErrorMachines']);
 
     $router->get('material/list', [App\Admin\Controllers\MaterialController::class, 'getMaterials']);
     $router->patch('material/update', [App\Admin\Controllers\MaterialController::class, 'updateMaterial']);
     $router->post('material/create', [App\Admin\Controllers\MaterialController::class, 'createMaterial']);
-    $router->post('material/delete', [App\Admin\Controllers\MaterialController::class, 'deleteMaterials']);
+    $router->delete('material/delete', [App\Admin\Controllers\MaterialController::class, 'deleteMaterials']);
     // $router->get('material/export', [App\Admin\Controllers\MaterialController::class, 'exportMaterials']);
     // $router->post('material/import', [App\Admin\Controllers\MaterialController::class, 'importMaterials']);
 
     $router->get('warehouses/list', [App\Admin\Controllers\WarehouseController::class, 'getWarehouses']);
     $router->patch('warehouses/update', [App\Admin\Controllers\WarehouseController::class, 'updateWarehouse']);
     $router->post('warehouses/create', [App\Admin\Controllers\WarehouseController::class, 'createWarehouse']);
-    $router->post('warehouses/delete', [App\Admin\Controllers\WarehouseController::class, 'deleteWarehouses']);
+    $router->delete('warehouses/delete', [App\Admin\Controllers\WarehouseController::class, 'deleteWarehouses']);
     $router->get('warehouses/export', [App\Admin\Controllers\WarehouseController::class, 'exportWarehouses']);
     $router->post('warehouses/import', [App\Admin\Controllers\WarehouseController::class, 'importWarehouses']);
 
     $router->get('cells/list', [App\Admin\Controllers\CellController::class, 'getCells']);
     $router->patch('cells/update', [App\Admin\Controllers\CellController::class, 'updateCell']);
     $router->post('cells/create', [App\Admin\Controllers\CellController::class, 'createCell']);
-    $router->post('cells/delete', [App\Admin\Controllers\CellController::class, 'deleteCells']);
+    $router->delete('cells/delete', [App\Admin\Controllers\CellController::class, 'deleteCells']);
     $router->get('cells/export', [App\Admin\Controllers\CellController::class, 'exportCells']);
     $router->post('cells/import', [App\Admin\Controllers\CellController::class, 'importCells']);
 
     $router->get('khuon/list', [App\Admin\Controllers\KhuonController::class, 'getKhuon']);
     $router->patch('khuon/update', [App\Admin\Controllers\KhuonController::class, 'updateKhuon']);
     $router->post('khuon/create', [App\Admin\Controllers\KhuonController::class, 'createKhuon']);
-    $router->post('khuon/delete', [App\Admin\Controllers\KhuonController::class, 'deleteKhuon']);
+    $router->delete('khuon/delete', [App\Admin\Controllers\KhuonController::class, 'deleteKhuon']);
     $router->get('khuon/export', [App\Admin\Controllers\KhuonController::class, 'exportKhuon']);
     $router->post('khuon/import', [App\Admin\Controllers\KhuonController::class, 'importKhuon']);
 
@@ -672,7 +672,7 @@ Route::group([
 
     $router->get('shift-assignment/list', [ShiftAssignmentController::class, 'getShiftAssignment']);
     $router->post('shift-assignment/create', [ShiftAssignmentController::class, 'createShiftAssignment']);
-    $router->post('shift-assignment/delete', [ShiftAssignmentController::class, 'deleteShiftAssignment']);
+    $router->delete('shift-assignment/delete', [ShiftAssignmentController::class, 'deleteShiftAssignment']);
     $router->patch('shift-assignment/update', [ShiftAssignmentController::class, 'updateShiftAssignment']);
 
     $router->get('shift/list', [ShiftController::class, 'getShift']);
@@ -689,7 +689,7 @@ Route::group([
     $router->get('voc-types', [VOCTypeController::class, 'getList']);
     $router->get('voc', [VOCRegisterController::class, 'getList']);
     $router->post('voc', [VOCRegisterController::class, 'createRecord']);
-    $router->put('voc/{id}', [VOCRegisterController::class, 'updateRecord']);
+    $router->patch('voc/{id}', [VOCRegisterController::class, 'updateRecord']);
     $router->delete('voc/{id}', [VOCRegisterController::class, 'deleteRecord']);
     $router->post('voc/upload-file', [VOCRegisterController::class, 'uploadFile']);
     $router->post('voc/clear-unused-files', [VOCRegisterController::class, 'clearUnusedFiles']);
@@ -705,7 +705,7 @@ Route::group([
 
     $router->get('departments/list', [DepartmentController::class, 'index']);
     $router->post('departments/create', [DepartmentController::class, 'create']);
-    $router->post('departments/delete', [DepartmentController::class, 'delete']);
+    $router->delete('departments/delete', [DepartmentController::class, 'delete']);
     $router->patch('departments/update', [DepartmentController::class, 'update']);
 
     $router->get('profile', [CustomAdminController::class, 'profile']);
