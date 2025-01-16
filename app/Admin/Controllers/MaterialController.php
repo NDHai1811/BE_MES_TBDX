@@ -2,11 +2,13 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\ErrorLog;
 use App\Models\LocatorFGMap;
 use App\Models\LocatorMLT;
 use App\Models\LocatorMLTMap;
 use App\Models\Material;
+use App\Models\Supplier;
 use App\Models\WareHouseMLTImport;
 use App\Models\WarehouseMLTLog;
 use Encore\Admin\Controllers\AdminController;
@@ -22,68 +24,6 @@ use Illuminate\Support\Facades\DB;
 class MaterialController extends AdminController
 {
     use API;
-    /**
-     * Title for current resource.
-     *
-     * @var string
-     */
-    protected $title = 'Material';
-
-    /**
-     * Make a grid builder.
-     *
-     * @return Grid
-     */
-    protected function grid()
-    {
-        $grid = new Grid(new Material());
-        $grid->actions(function ($actions) {
-            $actions->disableDelete();
-            $actions->disableEdit();
-            $actions->disableView();
-        });
-
-        $grid->column('id', __('Id'));
-        $grid->column('code', __('Code'));
-        $grid->column('ten', __('Ten'));
-        $grid->column('thong_so', __('Thong so'));
-
-        return $grid;
-    }
-
-    /**
-     * Make a show builder.
-     *
-     * @param mixed $id
-     * @return Show
-     */
-    protected function detail($id)
-    {
-        $show = new Show(Material::findOrFail($id));
-
-        $show->field('id', __('Id'));
-        $show->field('code', __('Code'));
-        $show->field('ten', __('Ten'));
-        $show->field('thong_so', __('Thong so'));
-
-        return $show;
-    }
-
-    /**
-     * Make a form builder.
-     *
-     * @return Form
-     */
-    protected function form()
-    {
-        $form = new Form(new Material());
-
-        $form->text('code', __('Code'));
-        $form->text('ten', __('Ten'));
-        $form->text('thong_so', __('Thong so'));
-
-        return $form;
-    }
 
     public function getMaterials(Request $request)
     {
@@ -111,21 +51,15 @@ class MaterialController extends AdminController
                 $q->where('locator_mlt_id', 'like', "%$request->locator_id%");
             });
         }
-        $count = $query->count();
-        $totalPage = $count;
-        $materials = $query->offset($page * $pageSize)->limit($pageSize)->get();;
+        $records = $query->paginate($request->pageSize ?? null);
+        $materials = $records->items();
 
-        // $materials = $query->get();
         foreach ($materials as $material) {
             $material->fsc = $material->fsc ? "X" : "";
             $material->ten_ncc = $material->supplier->name ?? "";
             $material->locator_id = $material->locator->locator_mlt_id ?? "";
         }
-        $res = [
-            "data" => $materials,
-            "totalPage" => $totalPage,
-        ];
-        return $this->success($res);
+        return $this->success(['data' => $materials, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function updateMaterial(Request $request)
     {
@@ -141,6 +75,7 @@ class MaterialController extends AdminController
                 }
                 $input['so_m_toi'] = floor(($input['so_kg'] / ($input['kho_giay'] / 100)) / ($input['dinh_luong'] / 1000));
                 $material->update($input);
+                Supplier::firstOrCreate(['id' => $input['loai_giay']], ['name' => $input['supplier_name']]);
                 if (isset($input['locator_id'])) {
                     $locator = LocatorMLT::find($input['locator_id']);
                     if (!$locator) {
@@ -178,7 +113,7 @@ class MaterialController extends AdminController
         } else {
             return $this->failure('', 'Không tìm thấy nguyên vật liệu');
         }
-        return $this->success('', 'Cập nhật thành công');
+        return $this->success($material, 'Cập nhật thành công');
     }
 
     public function createMaterial(Request $request)
@@ -193,6 +128,7 @@ class MaterialController extends AdminController
             }
             $input['so_m_toi'] = floor(($input['so_kg'] / ($input['kho_giay'] / 100)) / ($input['dinh_luong'] / 1000));
             $material = Material::create($input);
+            Supplier::firstOrCreate(['id' => $input['loai_giay']], ['name' => $input['supplier_name']]);
             if (isset($input['locator_id'])) {
                 $locator = LocatorMLT::find($input['locator_id']);
                 if (!$locator) {

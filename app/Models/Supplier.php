@@ -9,7 +9,7 @@ class Supplier extends Model
 {
     use HasFactory;
     protected $table = "suppliers";
-    protected $fillable = ['id', 'name', 'name_input'];
+    protected $fillable = ['id', 'name'];
     protected $casts = [
         'id' => 'string',
     ];
