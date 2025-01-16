@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\CustomUser;
 use App\Models\DRC;
 use App\Models\GroupPlanOrder;
@@ -23,8 +24,27 @@ class VehicleController extends AdminController
     public function getVehicles(Request $request)
     {
         $query = Vehicle::with('driver', 'assistant_driver1', 'assistant_driver2');
-        $records = $query->get();
-        foreach ($records as $key => $record) {
+        if(isset($request->id)){
+            $query->where('id', 'like', "%$request->id%");
+        }
+        if(isset($request->driver_name)){
+            $query->whereHas('driver', function($q) use($request){
+                $q->where('name', 'like', "%$request->driver_name%");
+            });
+        }
+        if(isset($request->assistant_driver1_name)){
+            $query->whereHas('assistant_driver1', function($q) use($request){
+                $q->where('name', 'like', "%$request->driver_name%");
+            });
+        }
+        if(isset($request->assistant_driver2_name)){
+            $query->whereHas('assistant_driver2', function($q) use($request){
+                $q->where('name', 'like', "%$request->driver_name%");
+            });
+        }
+        $records = $query->paginate($request->pageSize ?? null);
+        $vehicles = $records->items();
+        foreach ($vehicles as $key => $record) {
             $record->user1_name = $record->driver->name ?? "";
             $record->user1_username = $record->driver->username ?? "";
             $record->user1_phone_number = $record->driver->phone_number ?? "";
@@ -35,7 +55,7 @@ class VehicleController extends AdminController
             $record->user3_username = $record->assistant_driver2->username ?? "";
             $record->user3_phone_number = $record->assistant_driver2->phone_number ?? "";
         }
-        return $this->success($records);
+        return $this->success(['data' => $vehicles, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function updateVehicles(Request $request)
     {
@@ -78,6 +98,24 @@ class VehicleController extends AdminController
     public function exportVehicles(Request $request)
     {
         $query = Vehicle::with('driver', 'assistant_driver1', 'assistant_driver2');
+        if(isset($request->id)){
+            $query->where('id', 'like', "%$request->id%");
+        }
+        if(isset($request->driver_name)){
+            $query->whereHas('driver', function($q) use($request){
+                $q->where('name', 'like', "%$request->driver_name%");
+            });
+        }
+        if(isset($request->assistant_driver1_name)){
+            $query->whereHas('assistant_driver1', function($q) use($request){
+                $q->where('name', 'like', "%$request->driver_name%");
+            });
+        }
+        if(isset($request->assistant_driver2_name)){
+            $query->whereHas('assistant_driver2', function($q) use($request){
+                $q->where('name', 'like', "%$request->driver_name%");
+            });
+        }
         $records = $query->get();
         foreach ($records as $record) {
             $record->user1_name = $record->driver->name ?? "";
