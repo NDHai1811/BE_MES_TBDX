@@ -511,7 +511,7 @@ Route::group([
 //Unrequired route
 Route::group([
     'prefix'        => "/api",
-    'middleware'    => [],
+    'middleware'    => "auth:sanctum",
     'as'            => '',
 ], function (Router $router) {
 
