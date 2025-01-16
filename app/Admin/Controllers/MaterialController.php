@@ -75,7 +75,7 @@ class MaterialController extends AdminController
                 }
                 $input['so_m_toi'] = floor(($input['so_kg'] / ($input['kho_giay'] / 100)) / ($input['dinh_luong'] / 1000));
                 $material->update($input);
-                Supplier::firstOrCreate(['id' => $input['loai_giay']], ['name' => $input['supplier_name']]);
+                Supplier::firstOrCreate(['id' => $input['loai_giay']], ['name' => $input['supplier_name'] ?? ""]);
                 if (isset($input['locator_id'])) {
                     $locator = LocatorMLT::find($input['locator_id']);
                     if (!$locator) {
@@ -128,7 +128,7 @@ class MaterialController extends AdminController
             }
             $input['so_m_toi'] = floor(($input['so_kg'] / ($input['kho_giay'] / 100)) / ($input['dinh_luong'] / 1000));
             $material = Material::create($input);
-            Supplier::firstOrCreate(['id' => $input['loai_giay']], ['name' => $input['supplier_name']]);
+            Supplier::firstOrCreate(['id' => $input['loai_giay']], ['name' => $input['supplier_name'] ?? ""]);
             if (isset($input['locator_id'])) {
                 $locator = LocatorMLT::find($input['locator_id']);
                 if (!$locator) {
