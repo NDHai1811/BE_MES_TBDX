@@ -28,10 +28,10 @@ class WarehouseMLTLog extends Model
     }
     public function import()
     {
-        return $this->belongsTo(CustomUser::class, 'importer_id', 'id');
+        return $this->belongsTo(User::class, 'importer_id', 'id');
     }
     public function exporter()
     {
-        return $this->belongsTo(CustomUser::class, 'exporter_id', 'id');
+        return $this->belongsTo(User::class, 'exporter_id', 'id');
     }
 }

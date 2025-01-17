@@ -2,7 +2,7 @@
 
 namespace App\Admin\Controllers;
 
-use App\Models\CustomUser;
+use App\Models\User;
 use App\Models\ErrorLog;
 use App\Models\Jig;
 use App\Models\Sheft;
@@ -37,7 +37,7 @@ class UserMachineController extends AdminController
 
     public function getMachineAssignment(Request $request){
         $input = $request->all();
-        $query = CustomUser::orderBy('name');
+        $query = User::orderBy('name');
         if (!isset($request->all_user)) {
             $query->whereNull('deleted_at');
         }

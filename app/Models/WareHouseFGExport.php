@@ -30,7 +30,7 @@ class WareHouseFGExport extends Model
         return $this->belongsTo(DeliveryNote::class, 'delivery_note_id');
     }
     public function creator(){
-        return $this->hasOne(CustomUser::class, 'id', 'created_by');
+        return $this->hasOne(User::class, 'id', 'created_by');
     }
     public function warehouse_fg_log()
     {

@@ -12,7 +12,7 @@ class UserMachine extends Model
     protected $table = 'user_machine';
     protected $fillable = ['user_id','machine_id'];
     public function user(){
-        return $this->hasOne(CustomUser::class, 'id', 'user_id');
+        return $this->hasOne(User::class, 'id', 'user_id');
     }
     public function machine(){
         return $this->hasOne(Machine::class, 'id', 'machine_id');

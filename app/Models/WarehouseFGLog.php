@@ -38,7 +38,7 @@ class WarehouseFGLog extends Model
 
     public function user()
     {
-        return $this->hasOne(CustomUser::class, 'id', 'created_by');
+        return $this->hasOne(User::class, 'id', 'created_by');
     }
 
     public function lo_sx_pallet()

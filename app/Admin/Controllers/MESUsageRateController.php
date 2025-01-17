@@ -2,7 +2,7 @@
 
 namespace App\Admin\Controllers;
 
-use App\Models\CustomUser;
+use App\Models\User;
 use App\Models\KhuonData;
 use App\Models\KhuonLink;
 use App\Models\Machine;
@@ -27,7 +27,7 @@ class MESUsageRateController extends AdminController
     public function calculateUsageTime($date = 'now')
     {
         $today = Carbon::parse('now')->format('Y-m-d');
-        $query = CustomUser::where('function_user', 1)->whereNull('deleted_at');
+        $query = User::where('function_user', 1)->whereNull('deleted_at');
         $all = (clone $query)->count();
         $users = (clone $query)->whereDate('last_use_at', $today)->count();
         $data = UsageTime::updateOrCreate(
@@ -138,7 +138,7 @@ class MESUsageRateController extends AdminController
         $this->calculatePQCProcessing($date);
         $this->calculateKhuonBe($date);
         Tracking::whereIn('machine_id', ['CH02', 'CH03'])->update(['status' => 0]);
-        CustomUser::query()->update(['login_times_in_day'=>0, 'last_use_at'=>null, 'usage_time_in_day'=>0]);
+        User::query()->update(['login_times_in_day'=>0, 'last_use_at'=>null, 'usage_time_in_day'=>0]);
         return 'done';
     }
 

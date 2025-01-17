@@ -14,15 +14,15 @@ class DeliveryNote extends Model
     protected $casts = ['id' => 'string'];
     public function creator()
     {
-        return $this->hasOne(CustomUser::class, 'id', 'created_by');
+        return $this->hasOne(User::class, 'id', 'created_by');
     }
     public function exporter()
     {
-        return $this->hasOne(CustomUser::class, 'id', 'exporter_id');
+        return $this->hasOne(User::class, 'id', 'exporter_id');
     }
     public function driver()
     {
-        return $this->hasOne(CustomUser::class, 'id', 'driver_d');
+        return $this->hasOne(User::class, 'id', 'driver_d');
     }
     public function vehicle()
     {
@@ -34,6 +34,6 @@ class DeliveryNote extends Model
     }
     public function exporters()
     {
-        return $this->belongsToMany(CustomUser::class, 'admin_user_delivery_note', 'delivery_note_id', 'admin_user_id');
+        return $this->belongsToMany(User::class, 'admin_user_delivery_note', 'delivery_note_id', 'admin_user_id');
     }
 }

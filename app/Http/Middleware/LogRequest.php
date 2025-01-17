@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\CustomUser;
+use App\Models\User;
 use Closure;
 use Exception;
 use Illuminate\Http\Request;
@@ -54,7 +54,7 @@ class LogRequest
         if (!empty($data) && !(isset($data['success']) && $data['success'] == true)) {
             try {
                 RequestLog::query()->create($logData);
-                $user = CustomUser::find(auth()->user()->id ?? "");
+                $user = User::find(auth()->user()->id ?? "");
                 if($user){
                     $now = Carbon::now();
                     $diff = $user->last_use_at ? $now->diffInSeconds($user->last_use_at) : 0;

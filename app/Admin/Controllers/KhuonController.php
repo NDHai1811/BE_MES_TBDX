@@ -3,7 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Models\Customer;
-use App\Models\CustomUser;
+use App\Models\User;
 use App\Models\ErrorLog;
 use App\Models\Khuon;
 use App\Models\KhuonLink;
@@ -73,7 +73,7 @@ class KhuonController extends AdminController
             }
             $input['phan_loai_1'] = Str::slug($input['phan_loai_1']);
             if(!empty($input['designer_name'])){
-                $input['designer_id'] = CustomUser::where('name', 'like', "%" . trim($input['designer_name']) . "%")->first()->id ?? null;
+                $input['designer_id'] = User::where('name', 'like', "%" . trim($input['designer_name']) . "%")->first()->id ?? null;
             }
             $update = $khuon->update($input);
             return $this->success($khuon, 'Cập nhật thành công');
@@ -93,7 +93,7 @@ class KhuonController extends AdminController
             }
             $input['phan_loai_1'] = Str::slug($input['phan_loai_1']);
             if(!empty($input['designer_name'])){
-                $input['designer_id'] = CustomUser::where('name', 'like', "%" . trim($input['designer_name']) . "%")->first()->id ?? null;
+                $input['designer_id'] = User::where('name', 'like', "%" . trim($input['designer_name']) . "%")->first()->id ?? null;
             }
             $khuon = KhuonLink::create($input);
             DB::commit();
@@ -161,7 +161,7 @@ class KhuonController extends AdminController
                     $input['layout'] = $row['Q'];
                     $input['supplier'] = $row['R'];
                     $input['ngay_dat_khuon'] = $row['S'];
-                    $designer = CustomUser::where('name', 'like', "%" . trim($row['T']) . "%")->first();
+                    $designer = User::where('name', 'like', "%" . trim($row['T']) . "%")->first();
                     $input['designer_id'] = $designer->id ?? null;
                     $khuon_link[] = array_filter($input);
                 }

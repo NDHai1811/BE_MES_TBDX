@@ -3,7 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Helpers\QueryHelper;
-use App\Models\CustomUser;
+use App\Models\User;
 use App\Models\DRC;
 use App\Models\GroupPlanOrder;
 use App\Models\LocatorMLTMap;
@@ -258,11 +258,11 @@ class VehicleController extends AdminController
                 $input = [];
                 $input['id'] = $row['B'];
                 $input['weight'] = $row['C'];
-                $user1 = CustomUser::where('username', (int)$row['E'])->where('username', '<>', 'admin')->first();
+                $user1 = User::where('username', (int)$row['E'])->where('username', '<>', 'admin')->first();
                 $input['user1'] = $user1->id ?? null;
-                $user2 = CustomUser::where('username', (int)$row['H'])->where('username', '<>', 'admin')->first();
+                $user2 = User::where('username', (int)$row['H'])->where('username', '<>', 'admin')->first();
                 $input['user2'] = $user2->id ?? null;
-                $user3 = CustomUser::where('username', (int)$row['K'])->where('username', '<>', 'admin')->first();
+                $user3 = User::where('username', (int)$row['K'])->where('username', '<>', 'admin')->first();
                 $input['user3'] = $user3->id ?? null;
                 if ($input['id']) {
                     $vehicle[] = $input;

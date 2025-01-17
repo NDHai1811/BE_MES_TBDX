@@ -7,6 +7,7 @@ use App\Models\LSXPallet;
 use App\Models\Role;
 use App\Models\Permission;
 use App\Models\RolePermission;
+use App\Models\Shift;
 use App\Models\ShiftAssignment;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
@@ -30,7 +31,14 @@ class ShiftAssignmentController extends AdminController
             Route::post('shift-assignment/create', [ShiftAssignmentController::class, 'createShiftAssignment']);
             Route::delete('shift-assignment/delete', [ShiftAssignmentController::class, 'deleteShiftAssignment']);
             Route::patch('shift-assignment/update', [ShiftAssignmentController::class, 'updateShiftAssignment']);
+            Route::patch('shift/list', [ShiftAssignmentController::class, 'getShift']);
         });
+    }
+
+    public function getShift(Request $request){
+        $query = Shift::query();
+        $shifts = $query->get();
+        return $this->success($shifts);
     }
 
     public function getShiftAssignment(Request $request)

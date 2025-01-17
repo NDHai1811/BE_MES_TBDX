@@ -3,8 +3,9 @@
 namespace App\Admin\Controllers;
 
 use App\Helpers\QueryHelper;
-use App\Models\CustomUser;
+use App\Models\User;
 use App\Models\Department;
+use App\Models\UserRole;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
@@ -14,29 +15,31 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Validator;
 
-class CustomAdminController extends AdminController
+class UserController extends AdminController
 {
     use API;
     public static function registerRoutes()
     {
         Route::controller(self::class)->group(function () {
-            Route::get('users/list', [CustomAdminController::class, 'getUsers']);
-            Route::get('users/roles', [CustomAdminController::class, 'getUserRoles']);
-            Route::patch('users/update', [CustomAdminController::class, 'updateUsers']);
-            Route::post('users/create', [CustomAdminController::class, 'createUsers']);
-            Route::delete('users/delete', [CustomAdminController::class, 'deleteUsers']);
-            Route::get('users/export', [CustomAdminController::class, 'exportUsers']);
-            Route::post('users/import', [CustomAdminController::class, 'importUsers']);
-            Route::get('profile', [CustomAdminController::class, 'profile']);
+            Route::get('users/list', [UserController::class, 'getUsers']);
+            Route::get('users/roles', [UserController::class, 'getUserRoles']);
+            Route::patch('users/update', [UserController::class, 'updateUsers']);
+            Route::post('users/create', [UserController::class, 'createUsers']);
+            Route::delete('users/delete', [UserController::class, 'deleteUsers']);
+            Route::get('users/export', [UserController::class, 'exportUsers']);
+            Route::post('users/import', [UserController::class, 'importUsers']);
+            Route::get('profile', [UserController::class, 'profile']);
         });
     }
 
     public function getUsers(Request $request)
     {
-        $query = CustomUser::with('roles', 'department');
+        $query = User::with('roles', 'department');
         if (!isset($request->all_user)) {
             $query->whereNull('deleted_at');
         }
@@ -67,17 +70,17 @@ class CustomAdminController extends AdminController
     public function updateUsers(Request $request)
     {
         $input = $request->all();
-        $user = CustomUser::where('id', $input['id'])->first();
+        $user = User::where('id', $input['id'])->first();
         if ($user) {
-            $validated = CustomUser::validateUpdate($input);
+            $validated = User::validateUpdate($input);
             if ($validated->fails()) {
                 return $this->failure('', $validated->errors()->first());
             }
             $update = $user->update($input);
             if ($update) {
-                $user_roles = DB::table('admin_role_users')->where('user_id', $user->id)->delete();
+                $user_roles = UserRole::where('user_id', $user->id)->delete();
                 foreach ($input['roles'] ?? [] as $role) {
-                    DB::table('admin_role_users')->insert(['role_id' => $role, 'user_id' => $user->id]);
+                    UserRole::insert(['role_id' => $role, 'user_id' => $user->id]);
                 }
                 return $this->success($user);
             } else {
@@ -92,9 +95,9 @@ class CustomAdminController extends AdminController
     {
         $input = $request->all();
         $input['password'] = Hash::make('123456');
-        $user = CustomUser::create($input);
+        $user = User::create($input);
         foreach ($input['roles'] ?? [] as $role) {
-            DB::table('admin_role_users')->insert(['role_id' => $role, 'user_id' => $user->id]);
+            UserRole::insert(['role_id' => $role, 'user_id' => $user->id]);
         }
         return $this->success($user, 'Tạo thành công');
     }
@@ -102,13 +105,13 @@ class CustomAdminController extends AdminController
     public function deleteUsers(Request $request)
     {
         $input = $request->all();
-        CustomUser::whereIn('id', $input)->update(['deleted_at' => now()]);
+        User::whereIn('id', $input)->update(['deleted_at' => now()]);
         return $this->success('Xoá thành công');
     }
 
     public function exportUsers(Request $request)
     {
-        $query = CustomUser::with('roles')->whereNull('deleted_at');
+        $query = User::with('roles')->whereNull('deleted_at');
         if (!isset($request->all_user)) {
             $query->whereNull('deleted_at');
         }
@@ -250,7 +253,7 @@ class CustomAdminController extends AdminController
                 // if(!$input['username'] &&  $input['name'] && $input['bo_phan']){
                 //     break;
                 // }
-                $validated = CustomUser::validateUpdate($input);
+                $validated = User::validateUpdate($input);
                 if ($validated->fails()) {
                     return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
                 }
@@ -258,14 +261,14 @@ class CustomAdminController extends AdminController
             }
         }
         foreach ($data as $key => $input) {
-            $user = CustomUser::where('username', $input['username'])->first();
+            $user = User::where('username', $input['username'])->first();
             if ($user) {
                 $user->update($input);
             } else {
                 $input['password'] = Hash::make('123456');
-                $user = CustomUser::create($input);
+                $user = User::create($input);
             }
-            DB::table('admin_role_users')->where('user_id', $user->id)->delete();
+            UserRole::where('user_id', $user->id)->delete();
             foreach (explode(',', $input['bo_phan']) as $bo_phan) {
                 $role = DB::table('admin_roles')->where('name', trim($bo_phan))->first();
                 if ($role) {
@@ -275,7 +278,7 @@ class CustomAdminController extends AdminController
                         ->exists();
 
                     if (!$exists) {
-                        DB::table('admin_role_users')->insert([
+                        UserRole::insert([
                             'role_id' => $role->id,
                             'user_id' => $user->id,
                         ]);

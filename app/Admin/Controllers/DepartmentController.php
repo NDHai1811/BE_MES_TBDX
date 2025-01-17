@@ -4,7 +4,7 @@ namespace App\Admin\Controllers;
 
 use App\Helpers\QueryHelper;
 use App\Http\Controllers\Controller;
-use App\Models\CustomUser;
+use App\Models\User;
 use App\Models\Department;
 use App\Models\DRC;
 use App\Models\GroupPlanOrder;

@@ -34,7 +34,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use App\Models\CustomUser;
+use App\Models\User;
 use App\Models\DeliveryNote;
 use App\Models\DRC;
 use App\Models\ErrorLog;
@@ -210,7 +210,7 @@ class ApiUIController extends AdminController
                 foreach ($qc_error as $key => $err) {
                     if (!is_numeric($err)) {
                         foreach ($err['data'] ?? [] as $err_key => $err_val) {
-                            $user = CustomUser::find($err['user_id']);
+                            $user = User::find($err['user_id']);
                             if (isset($err['type']) && $err['type'] === 'qc') {
                                 if ($line_key === 'gap-dan' || $line_key === 'chon' || $line_key === 'oqc') {
                                     $sl_ng_pqc += $err_val;
@@ -349,7 +349,7 @@ class ApiUIController extends AdminController
             foreach ($qc_error as $key => $err) {
                 if (!is_numeric($err)) {
                     foreach ($err['data'] ?? [] as $err_key => $err_val) {
-                        $user = CustomUser::find($err['user_id']);
+                        $user = User::find($err['user_id']);
                         if (isset($err['type']) && $err['type'] === 'qc') {
                             if ($line_key === 'gap-dan' || $line_key === 'chon' || $line_key === 'oqc') {
                                 $sl_ng_pqc += $err_val;
@@ -4276,11 +4276,11 @@ class ApiUIController extends AdminController
                 $input = [];
                 $input['id'] = $row['B'];
                 $input['weight'] = $row['C'];
-                $user1 = CustomUser::where('username', (int)$row['E'])->where('username', '<>', 'admin')->first();
+                $user1 = User::where('username', (int)$row['E'])->where('username', '<>', 'admin')->first();
                 $input['user1'] = $user1->id ?? null;
-                $user2 = CustomUser::where('username', (int)$row['H'])->where('username', '<>', 'admin')->first();
+                $user2 = User::where('username', (int)$row['H'])->where('username', '<>', 'admin')->first();
                 $input['user2'] = $user2->id ?? null;
-                $user3 = CustomUser::where('username', (int)$row['K'])->where('username', '<>', 'admin')->first();
+                $user3 = User::where('username', (int)$row['K'])->where('username', '<>', 'admin')->first();
                 $input['user3'] = $user3->id ?? null;
                 if ($input['id']) {
                     $vehicle[] = $input;
@@ -4502,7 +4502,7 @@ class ApiUIController extends AdminController
             DB::beginTransaction();
             // UserLineMachine::query()->delete();
             foreach ($user_line_machine as $key => $input) {
-                $user = CustomUser::where('username', $input['username'])->first();
+                $user = User::where('username', $input['username'])->first();
                 if ($user) {
                     $input['user_id'] = $user->id;
                     if (isset($input['machine_id']) && $input['machine_id']) {
@@ -5215,7 +5215,7 @@ class ApiUIController extends AdminController
                 $input['date'] = $row['L'];
                 $input['time'] = $row['M'];
                 $input['nhap_du'] = $row['O'] == 'Không' ? 0 : $row['O'];
-                $user = CustomUser::where('name', $row['P'])->first();
+                $user = User::where('name', $row['P'])->first();
                 $input['user'] = $user->id ?? null;
                 if (!empty($input['mdh']) && is_numeric($input['mql'])){
                     if(!empty($input['pallet_id']) && !empty($input['lo_sx'])) {

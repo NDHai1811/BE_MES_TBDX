@@ -12,12 +12,12 @@ class Vehicle extends Model
     protected $fillable = ['id','weight','user1','user2','user3'];
     protected $casts = ['id'=>'string'];
     public function driver(){
-        return $this->hasOne(CustomUser::class, 'id', 'user1');
+        return $this->hasOne(User::class, 'id', 'user1');
     }
     public function assistant_driver1(){
-        return $this->hasOne(CustomUser::class, 'id', 'user2');
+        return $this->hasOne(User::class, 'id', 'user2');
     }
     public function assistant_driver2(){
-        return $this->hasOne(CustomUser::class, 'id', 'user3');
+        return $this->hasOne(User::class, 'id', 'user3');
     }
 }

@@ -11,13 +11,11 @@ use App\Models\Customer;
 use App\Models\CustomerShort;
 use App\Models\User;
 use App\Models\DeliveryNote;
-use App\Models\DeliveryNoteOrder;
 use App\Models\GroupPlanOrder;
 use App\Models\DRC;
 use App\Models\ErrorLog;
 use App\Models\GoodsReceiptNote;
 use App\Models\InfoCongDoan;
-use App\Models\IOTLog;
 use App\Models\Layout;
 use App\Models\Line;
 use App\Models\LocatorFG;
@@ -25,7 +23,6 @@ use App\Models\LocatorFGMap;
 use App\Models\LocatorMLT;
 use App\Models\LocatorMLTMap;
 use App\Models\Lot;
-use App\Models\LotLog;
 use App\Models\LSXLog;
 use App\Models\LSXPallet;
 use App\Models\Machine;
@@ -33,14 +30,9 @@ use App\Models\MachineParameter;
 use App\Traits\API;
 use Carbon\Carbon;
 use Encore\Admin\Controllers\AdminController;
-use Encore\Admin\Facades\Admin;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use App\Models\MachineLog;
-use App\Models\MachineMap;
 use App\Models\MachineParameterLogs;
-use App\Models\MachineParameters;
 use App\Models\Mapping;
 use App\Models\Material;
 use App\Models\Order;
@@ -52,12 +44,9 @@ use App\Models\Role;
 use App\Models\Tem;
 use App\Models\TieuChuanNCC;
 use App\Models\UserLine;
-use App\Models\UserLineMachine;
 use App\Models\UserMachine;
-use App\Models\WareHouse;
 use App\Models\WareHouseFGExport;
 use App\Models\WarehouseFGLog;
-use App\Models\WareHouseLog;
 use App\Models\WareHouseMLTExport;
 use App\Models\WareHouseMLTImport;
 use App\Models\WarehouseMLTLog;
@@ -67,20 +56,18 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use stdClass;
 use Illuminate\Support\Str;
-use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
-use Throwable;
 use App\Events\ProductionUpdated;
 use App\Models\InfoCongDoanPriority;
 use App\Models\ShiftAssignment;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Route;
 
-class ApiController extends AdminController
+class ApiOIController extends AdminController
 {
     use API;
     private $user;
@@ -91,86 +78,89 @@ class ApiController extends AdminController
         $this->apiUIController = $apiUIController;
     }
 
-    //Login
-    private function parseDataUser($user)
+    public static function registerRoutes()
     {
-        $permission = [];
-        $routes = [];
-        foreach ($user->roles as $role) {
-            $tm = ($role->permissions);
-            foreach ($tm as $t) {
-                $permission[] = $t->slug;
-                if ($t->http_path) {
-                    $routes = array_merge($routes, explode(';', $t->http_path));
-                }
-            }
-        }
-
-        $data =  [
-            "username" => $user->username,
-            "name" => $user->name,
-            "avatar" => $user->avatar,
-            "gender" => $user->gender,
-            "email" => $user->email,
-            "address" => $user->address,
-            "phone" => $user->phone,
-            "permission" => $permission,
-            "token" => $user->createToken("")->plainTextToken,
-            "routes" => $routes,
-        ];
-        return $data;
+        Route::controller(self::class)->group(function () {
+            Route::get('machine/list', [ApiOIController::class, 'listMachine']);
+            Route::get('manufacture/tracking-status', [ApiOIController::class, 'getTrackingStatus']);
+            Route::get('manufacture/current', [ApiOIController::class, 'getCurrentManufacturing']);
+            Route::post('manufacture/start-produce', [ApiOIController::class, 'startProduce']);
+            Route::post('manufacture/stop-produce', [ApiOIController::class, 'stopProduce']);
+            Route::get('manufacture/overall', [ApiOIController::class, 'getManufactureOverall']);
+            Route::get('manufacture/list-lot', [ApiOIController::class, 'listLotOI']);
+            Route::get('manufacture/intem', [ApiOIController::class, 'inTem']);
+            Route::post('manufacture/scan', [ApiOIController::class, 'scan'])->middleware('prevent-duplicate-requests');
+            Route::post('manufacture/start-tracking', [ApiOIController::class, 'startTracking']);
+            Route::post('manufacture/stop-tracking', [ApiOIController::class, 'stopTracking']);
+            Route::post('manufacture/reorder-priority', [ApiOIController::class, 'reorderPriority']);
+            Route::get('manufacture/paused-plan-list', [ApiOIController::class, 'getPausedPlanList']);
+            Route::post('manufacture/pause-plan', [ApiOIController::class, 'pausePlan']);
+            Route::post('manufacture/resume-plan', [ApiOIController::class, 'resumePlan']);
+            Route::post('manufacture/update-quantity-info-cong-doan', [ApiOIController::class, 'updateQuantityInfoCongDoan'])->middleware('prevent-duplicate-requests');
+            Route::post('manufacture/delete-paused-plan-list', [ApiOIController::class, 'deletePausedPlanList']);
+            Route::post('manufacture/manual/input', [ApiOIController::class, 'manualInput']);
+            Route::post('manufacture/manual/scan', [ApiOIController::class, 'scanManual'])->middleware('prevent-duplicate-requests');
+            Route::get('manufacture/manual/list', [ApiOIController::class, 'manualList']);
+            Route::post('manufacture/manual/print', [ApiOIController::class, 'manualPrintStamp']);
+        
+            Route::get('qc/check-permission', [ApiOIController::class, 'checkUserPermission']);
+            Route::get('qc/line', [ApiOIController::class, 'getQCLine']);
+            Route::get('pqc/error/list', [ApiOIController::class, 'getLoiNgoaiQuanPQC']);
+            Route::get('pqc/checksheet/list', [ApiOIController::class, 'getLoiTinhNangPQCTest']);
+            Route::post('pqc/save-result', [ApiOIController::class, 'saveQCResult'])->middleware('prevent-duplicate-requests');
+            Route::get('pqc/lot/list', [ApiOIController::class, 'pqcLotList']);
+            Route::get('pqc/overall', [ApiOIController::class, 'pqcOverall']);
+            Route::get('iqc/error/list', [ApiOIController::class, 'getLoiNgoaiQuanIQC']);
+            Route::get('iqc/checksheet/list', [ApiOIController::class, 'getLoiTinhNangIQC']);
+            Route::post('iqc/save-result', [ApiOIController::class, 'saveIQCResult'])->middleware('prevent-duplicate-requests');
+            Route::get('iqc/lot/list', [ApiOIController::class, 'iqcLotList']);
+            Route::get('iqc/overall', [ApiOIController::class, 'iqcOverall']);
+        
+            Route::get('equipment/overall', [ApiOIController::class, 'overallMachine']);
+            Route::get('equipment/mapping-list', [ApiOIController::class, 'getMappingList']);
+            Route::get('equipment/error/log', [ApiOIController::class, 'errorMachineLog']);
+            Route::get('equipment/error/list', [ApiOIController::class, 'errorMachineList']);
+            Route::get('equipment/error/detail', [ApiOIController::class, 'errorMachineDetail']);
+            Route::post('equipment/error/result', [ApiOIController::class, 'errorMachineResult']);
+            Route::get('equipment/parameters', [ApiOIController::class, 'getMachineParameters']);
+            Route::get('equipment/parameters/list', [ApiOIController::class, 'getMachineParameterList']);
+            Route::post('equipment/parameters/save', [ApiOIController::class, 'saveMachineParameters'])->middleware('prevent-duplicate-requests');
+            Route::get('equipment/mapping/list', [ApiOIController::class, 'getListMappingRequire']);
+            Route::get('equipment/mapping/check-material', [ApiOIController::class, 'checkMapping']);
+            Route::post('equipment/mapping/result', [ApiOIController::class, 'resultMapping'])->middleware('prevent-duplicate-requests');
+        
+        
+            Route::get('warehouse/mlt/import/log', [ApiOIController::class, 'importMLTLog']);
+            Route::get('warehouse/mlt/import/scan', [ApiOIController::class, 'importMLTScan']);
+            Route::post('warehouse/mlt/import/save', [ApiOIController::class, 'importMLTSave'])->middleware('prevent-duplicate-requests');
+            Route::post('warehouse/mlt/import/reimport', [ApiOIController::class, 'importMLTReimport'])->middleware('prevent-duplicate-requests');
+            Route::get('warehouse/mlt/import/overall', [ApiOIController::class, 'importMLTOverall']);
+            Route::post('warehouse/mlt/import/warehouse13', [ApiOIController::class, 'handleNGMaterial'])->middleware('prevent-duplicate-requests');;
+            Route::get('warehouse/mlt/export/log-list', [ApiOIController::class, 'getExportMLTLogs']);
+            Route::get('warehouse/mlt/export/scan', [ApiOIController::class, 'exportMLTScan']);
+            Route::get('warehouse/mlt/export/result', [ApiOIController::class, 'updateExportMLTLogs'])->middleware('prevent-duplicate-requests');
+            Route::get('warehouse/mlt/export/list', [ApiOIController::class, 'exportMLTList']);
+            Route::post('warehouse/mlt/export/save', [ApiOIController::class, 'exportMLTSave'])->middleware('prevent-duplicate-requests');
+        
+            Route::get('warehouse/fg/list-pallet', [ApiOIController::class, 'listPallet']);
+            Route::get('warehouse/fg/info-pallet', [ApiOIController::class, 'infoPallet']);
+            // Route::get('warehouse/fg/overall', [ApiOIController::class, 'getOverallWarehouseFG']);
+            Route::get('warehouse/fg/list', [ApiOIController::class, 'getWarehouseFGLogs']);
+            Route::get('warehouse/fg/suggest-pallet', [ApiOIController::class, 'suggestPallet']);
+            Route::get('warehouse/fg/quantity-lot', [ApiOIController::class, 'quantityLosx']);
+            Route::post('warehouse/fg/store-pallet', [ApiOIController::class, 'storePallet'])->middleware('prevent-duplicate-requests');
+            Route::post('warehouse/fg/update-pallet', [ApiOIController::class, 'updatePallet'])->middleware('prevent-duplicate-requests');
+            Route::post('warehouse/fg/import/save', [ApiOIController::class, 'importFGSave'])->middleware('prevent-duplicate-requests');
+            Route::get('warehouse/fg/import/logs', [ApiOIController::class, 'getLogImportWarehouseFG']);
+            Route::get('warehouse/fg/overall', [ApiOIController::class, 'getFGOverall']);
+            Route::get('warehouse/fg/check-losx', [ApiOIController::class, 'checkLosx']);
+            Route::get('warehouse/fg/export/logs', [ApiOIController::class, 'getLogExportWarehouseFG']);
+            Route::get('warehouse/fg/export/list-delivery-note', [ApiOIController::class, 'getDeliveryNoteList']);
+            Route::get('warehouse/fg/export/check-pallet', [ApiOIController::class, 'checkLoSXPallet']);
+            Route::post('warehouse/fg/export/handle-export-pallet', [ApiOIController::class, 'exportPallet'])->middleware('prevent-duplicate-requests');
+            Route::get('warehouse/fg/export/download-delivery-note', [ApiOIController::class, 'exportWarehouseFGDeliveryNote']);
+        });
     }
-
-    public function login(Request $request)
-    {
-        $validate = Validator::make($request->all(), [
-            "username" => "required",
-            "password" => "required",
-        ]);
-        if ($validate->fails()) {
-            return $this->failure();
-        }
-        $credentials = $request->only(["username", 'password']);
-        if (Admin::guard()->attempt($credentials)) {
-            $user = Admin::user();
-            $user = $this->user->find($user->id);
-            // $user->tokens()->delete();
-            return $this->success($this->parseDataUser($user), 'Đăng nhập thành công');
-        }
-        return $this->failure([], 'Sai tên đăng nhập hoặc mật khẩu!');
-    }
-
-    public function logout(Request $request)
-    {
-        $user = $request->user();
-        if (isset($user))
-            $user->tokens()->delete();
-        return $this->success();
-    }
-
-    public function userInfo(Request $request)
-    {
-        $user =  $request->user();
-        if ($user)
-            return $this->success($this->parseDataUser($user));
-        return $this->failure([], "Nguời dùng không tồn tại");
-    }
-
-    public function userChangePassword(Request $request)
-    {
-        $user = $request->user();
-        if (!$request->password || !$request->newPassword) {
-            return $this->failure([], "Mật khẩu cũ và mật khẩu mới là bắt buộc");
-        }
-
-        if (Hash::check($request->password, $user->password)) {
-            $user->password = Hash::make($request->newPassword);
-            $user->save();
-            return $this->success($user, 'Đổi mật khẩu thành công');
-        }
-        return $this->failure([], "Sai mật khẩu, không thể thực hiện thao tác này");
-    }
-    //End Login
 
     function splitNumberIntoArray($number, $divider)
     {
@@ -2614,9 +2604,7 @@ class ApiController extends AdminController
 
     public function productionPlan(Request $request)
     {
-        return $request;
         $query = ProductionPlan::with('order', 'machine.line', 'orders', 'creator:id,name')->orderBy('thu_tu_uu_tien')->orderBy('updated_at', 'DESC');
-        return $query->get();
         if (isset($request->end_date) && isset($request->start_date)) {
             $query->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
                 ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)));

@@ -2,7 +2,7 @@
 
 namespace App\Admin\Controllers;
 
-use App\Models\CustomUser;
+use App\Models\User;
 use App\Models\DRC;
 use App\Models\GroupPlanOrder;
 use App\Models\LocatorMLTMap;

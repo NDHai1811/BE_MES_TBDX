@@ -12,6 +12,6 @@ class UsageTime extends Model
     // public $timestamps = false;
     protected $fillable = ['number_of_user', 'date', 'usage_time'];
     public function user(){
-        return $this->hasMany(CustomUser::class, 'user_id');
+        return $this->hasMany(User::class, 'user_id');
     }
 }

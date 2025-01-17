@@ -40,6 +40,6 @@ class KhuonLink extends Model
         return $this->belongsTo(Khuon::class, 'khuon_id');
     }
     public function designer(){
-        return $this->belongsTo(CustomUser::class, 'designer_id');
+        return $this->belongsTo(User::class, 'designer_id');
     }
 }

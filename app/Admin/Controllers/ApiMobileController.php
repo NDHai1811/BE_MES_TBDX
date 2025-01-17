@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 use App\Models\Cell;
 use App\Models\CellProduct;
 use App\Models\Customer;
-use App\Models\CustomUser;
+use App\Models\User;
 use App\Models\Error;
 use App\Models\ErrorLog;
 use App\Models\GroupPlanOrder;
@@ -80,7 +80,7 @@ class ApiMobileController extends AdminController
 {
     use API;
     private $user;
-    public function __construct(CustomUser $customUser)
+    public function __construct(User $customUser)
     {
         $this->user = $customUser;
     }
@@ -3340,7 +3340,7 @@ class ApiMobileController extends AdminController
             $object->so_luong = $lot->so_luong;
             $object->vi_tri = $record->cell_id;
             $object->status = 2;
-            $object->nguoi_nhap = CustomUser::find($record->created_by)->name;
+            $object->nguoi_nhap = User::find($record->created_by)->name;
             $data[] = $object;
         }
         return $this->success($data);

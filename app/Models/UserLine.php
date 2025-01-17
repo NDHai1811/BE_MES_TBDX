@@ -12,7 +12,7 @@ class UserLine extends Model
     protected $table = 'user_line';
     protected $fillable = ['user_id','line_id'];
     public function user(){
-        return $this->hasOne(CustomUser::class, 'id', 'user_id');
+        return $this->hasOne(User::class, 'id', 'user_id');
     }
     public function line(){
         return $this->hasOne(Line::class, 'id', 'line_id');

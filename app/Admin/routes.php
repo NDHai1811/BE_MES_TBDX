@@ -26,6 +26,7 @@ use App\Admin\Controllers\RoleController;
 use App\Admin\Controllers\ShiftAssignmentController;
 use App\Admin\Controllers\ShiftController;
 use App\Admin\Controllers\TestCriteriaController;
+use App\Admin\Controllers\UserController;
 use App\Admin\Controllers\UserLineMachineController;
 use App\Admin\Controllers\UserMachineController;
 use App\Admin\Controllers\VehicleController;
@@ -299,14 +300,14 @@ Route::group([
     $router->get('ui/data-filter', [ApiUIController::class, 'getDataFilterUI']);
 });
 
-//New route
-Route::group([
-    'prefix'        => "/api",
-    'middleware'    => [],
-    'as'            => "/api" . '.',
-], function (Router $router) {
-    $router->post('/login', [ApiMobileController::class, 'login']);
-});
+
+// Route::group([
+//     'prefix'        => "/api",
+//     'middleware'    => [],
+//     'as'            => "/api" . '.',
+// ], function (Router $router) {
+//     $router->post('/login', [ApiMobileController::class, 'login']);
+// });
 Route::group([
     'prefix'        => "/api",
     'middleware'    => [],
@@ -509,104 +510,42 @@ Route::group([
 });
 
 //Unrequired route
-Route::group([
-    'prefix'        => "/api",
-    'middleware'    => "auth:sanctum",
-    'as'            => '',
-], function (Router $router) {
-
-    InfoCongDoanController::registerRoutes();//Thông tin sản lượng lô
-
-    MachineController::registerRoutes();//Máy
-
-    ErrorController::registerRoutes();//Lỗi công đoạn
-
-    TestCriteriaController::registerRoutes();//Chỉ tiêu kiểm tra
-
-    LineController::registerRoutes();//Công đoạn
-
-    CustomAdminController::registerRoutes();//Người dùng
-
-    RoleController::registerRoutes();//Vai trò
-
-    PermissionController::registerRoutes();//Quyền
-
-    ErrorMachineController::registerRoutes();//Lỗi máy
-
-    MaterialController::registerRoutes();//Nguyên vật liệu
-
-    KhuonController::registerRoutes();//Khuôn
-
-    MaintenanceController::registerRoutes();//Bảo trì
-
-    OrderController::registerRoutes();//Đơn hàng
-
-    CustomerController::registerRoutes();//Khách hàng
-
-    BuyerController::registerRoutes();//Buyer
-
-    LayoutController::registerRoutes();//Layout
-
-    VehicleController::registerRoutes();//Xe
-
-    UserMachineController::registerRoutes();//Phân bổ máy cho người dùng
-
-    ShiftAssignmentController::registerRoutes();//Phân ca làm việc
-
-    VOCTypeController::registerRoutes();//Loại VOC
-
-    VOCRegisterController::registerRoutes();//VOC
-
-    KPIController::registerRoutes();//KPI chart
-
-    DepartmentController::registerRoutes();//Bộ phận
-
-    $router->get('shift/list', [ShiftController::class, 'getShift']);
-    $router->post('manufacture/production-plan/import', [ApiController::class, 'importKHSX']);
-    $router->post('import/vehicle', [ApiUIController::class, 'importVehicle']);
-    $router->post('update-tem', [ApiUIController::class, 'updateTem']);
-    $router->post('import-khuon-link', [ApiUIController::class, 'importKhuonLink']);
-    $router->post('upload-nhap-kho-nvl', [ApiController::class, 'uploadNKNVL']);
-    $router->post('locate-by-supplier', [ApiController::class, 'phanKhuTheoNCC']);
-    $router->post('import/tieu_chuan_ncc', [ApiController::class, 'importTieuChuanNCC']);
-    $router->post('locator-mtl-map-import', [ApiController::class, 'importLocatorMLTMap']);
-    $router->post('orders/import-from-plan', [App\Admin\Controllers\OrderController::class, 'importOrdersFromPLan']);
-});
-
-Route::group([
-    'prefix'        => "/api",
-    'middleware'    => [],
-    'as'            => '',
-], function (Router $router) {
-    $router->post('import-material', [ApiUIController::class, 'importMaterial']);
-    $router->post('import', [ApiUIController::class, 'import']);
-    $router->post('import-new-fg-locator', [ApiUIController::class, 'importNewFGLocator']);
-    $router->get('intem', [ApiUIController::class, 'getTem']);
-    $router->post('create-table-fields', [ApiUIController::class, 'insertTableFields']);
-    $router->post('import-user-line-machine', [ApiUIController::class, 'importUserLineMachine']);
-    $router->post('import-iqc-test-criterias', [ApiUIController::class, 'importIQCTestCriteria']);
-    $router->post('update-customer-wahoure-fg-export', [ApiUIController::class, 'updateCustomerWarehouseFGExport']);
-    $router->post('update-so-kg-dau-material', [ApiUIController::class, 'updateSoKGDauMaterial']);
-    $router->post('searchMaterial', [ApiUIController::class, 'searchMasterDataMaterial']);
-    $router->post('deleteOldMaterials', [ApiUIController::class, 'deleteMaterialHasNoLocation']); //Cập nhật tất cả vị trí kho có %C01% sang C01.001
-    $router->post('sua-material', [ApiUIController::class, 'suaChuaLoiLam']);
-    $router->get('update-info-from-plan', [ApiUIController::class, 'updateInfoFromPlan']);
-    $router->get('update_admin_user_delivery_note', [ApiUIController::class, 'update_admin_user_delivery_note']);
-    $router->post('update-new-machine-id', [ApiUIController::class, 'updateNewMachineId']);
-    $router->get('update-ngaysx-info-cong-doan', [ApiUIController::class, 'updateNgaysxInfoCongDoan']);
-    $router->get('update-dinhmuc-info-cong-doan', [ApiUIController::class, 'updateDinhMucInfoCongDoan']);
-    $router->get('update-old-info-cong-doan', [ApiUIController::class, 'updateInfoCongDoanPriority']);
-    $router->get('reset-info-cong-doan', [ApiUIController::class, 'resetInfoCongDoan']);
-    $router->get('end-old-info-cong-doan', [ApiUIController::class, 'endOldInfoCongDoan']);
-    $router->get('wtf', [ApiUIController::class, 'wtf']);
-    $router->get('calculateUsageTime', [MESUsageRateController::class, 'calculateUsageTime']);
-    $router->get('calculateMaintenanceMachine', [MESUsageRateController::class, 'calculateMaintenanceMachine']);
-    $router->get('calculatePQCProcessing', [MESUsageRateController::class, 'calculatePQCProcessing']);
-    $router->get('calculateKhuonBe', [MESUsageRateController::class, 'calculateKhuonBe']);
-    $router->get('getTableSystemUsageRate', [MESUsageRateController::class, 'getTableSystemUsageRate']);
-    $router->get('cronjob', [MESUsageRateController::class, 'cronjob']);
-    $router->get('retriveData', [MESUsageRateController::class, 'retriveData']);
-    $router->get('deleteDuplicate', [ApiUIController::class, 'deleteDuplicate']);
-    $router->post('capNhatTonKhoTPExcel', [ApiUIController::class, 'capNhatTonKhoTPExcel']);
-    $router->get('reorderInfoCongDoan', [ApiController::class, 'reorderInfoCongDoan']);
-});
+// Route::group([
+//     'prefix'        => "/api",
+//     'middleware'    => "auth:sanctum",
+//     'as'            => '',
+// ], function (Router $router) {
+//     InfoCongDoanController::registerRoutes();//Thông tin sản lượng lô
+//     MachineController::registerRoutes();//Máy
+//     ErrorController::registerRoutes();//Lỗi công đoạn
+//     TestCriteriaController::registerRoutes();//Chỉ tiêu kiểm tra
+//     LineController::registerRoutes();//Công đoạn
+//     UserController::registerRoutes();//Người dùng
+//     RoleController::registerRoutes();//Vai trò
+//     PermissionController::registerRoutes();//Quyền
+//     ErrorMachineController::registerRoutes();//Lỗi máy
+//     MaterialController::registerRoutes();//Nguyên vật liệu
+//     KhuonController::registerRoutes();//Khuôn
+//     MaintenanceController::registerRoutes();//Bảo trì
+//     OrderController::registerRoutes();//Đơn hàng
+//     CustomerController::registerRoutes();//Khách hàng
+//     BuyerController::registerRoutes();//Buyer
+//     LayoutController::registerRoutes();//Layout
+//     VehicleController::registerRoutes();//Xe
+//     UserMachineController::registerRoutes();//Phân bổ máy cho người dùng
+//     ShiftAssignmentController::registerRoutes();//Phân ca làm việc
+//     VOCTypeController::registerRoutes();//Loại VOC
+//     VOCRegisterController::registerRoutes();//VOC
+//     KPIController::registerRoutes();//KPI chart
+//     DepartmentController::registerRoutes();//Bộ phận
+//     $router->get('shift/list', [ShiftController::class, 'getShift']);
+//     $router->post('manufacture/production-plan/import', [ApiController::class, 'importKHSX']);
+//     $router->post('import/vehicle', [ApiUIController::class, 'importVehicle']);
+//     $router->post('update-tem', [ApiUIController::class, 'updateTem']);
+//     $router->post('import-khuon-link', [ApiUIController::class, 'importKhuonLink']);
+//     $router->post('upload-nhap-kho-nvl', [ApiController::class, 'uploadNKNVL']);
+//     $router->post('locate-by-supplier', [ApiController::class, 'phanKhuTheoNCC']);
+//     $router->post('import/tieu_chuan_ncc', [ApiController::class, 'importTieuChuanNCC']);
+//     $router->post('locator-mtl-map-import', [ApiController::class, 'importLocatorMLTMap']);
+//     $router->post('orders/import-from-plan', [App\Admin\Controllers\OrderController::class, 'importOrdersFromPLan']);
+// });

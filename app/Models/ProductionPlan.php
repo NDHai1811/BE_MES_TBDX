@@ -75,7 +75,7 @@ class ProductionPlan extends Model
     }
     public function creator()
     {
-        return $this->belongsTo(CustomUser::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by');
     }
     public function infoCongDoan(){
         return $this->hasOne(InfoCongDoan::class, 'plan_id');

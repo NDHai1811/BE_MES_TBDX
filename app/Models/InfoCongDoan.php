@@ -98,7 +98,7 @@ class InfoCongDoan extends Model
     }
     public function user()
     {
-        return $this->belongsTo(CustomUser::class, 'nhan_vien_sx');
+        return $this->belongsTo(User::class, 'nhan_vien_sx');
     }
     public function lsx()
     {

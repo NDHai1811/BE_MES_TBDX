@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\Cell;
-use App\Models\CustomUser;
+use App\Models\User;
 use App\Models\Error;
 use App\Models\InfoCongDoan;
 use App\Models\IOTLog;
@@ -115,7 +115,7 @@ Route::get('/', function () {
 
 
 //     $arr = explode('-', Str::slug($ten));
-//     $user = new CustomUser();
+//     $user = new User();
 //     $user->username = $arr[0][0] . $arr[1][0] . $arr[2];
 //     $user->password = Hash::make("12345678");
 

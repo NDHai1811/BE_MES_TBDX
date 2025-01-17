@@ -39,11 +39,11 @@ class VOCRegister extends Model
 
     public function register(): BelongsTo
     {
-        return $this->belongsTo(CustomUser::class, 'registered_by');
+        return $this->belongsTo(User::class, 'registered_by');
     }
 
     public function replier(): BelongsTo
     {
-        return $this->belongsTo(CustomUser::class, 'replied_by');
+        return $this->belongsTo(User::class, 'replied_by');
     }
 }

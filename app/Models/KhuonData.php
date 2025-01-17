@@ -12,6 +12,6 @@ class KhuonData extends Model
     // public $timestamps = false;
     protected $fillable = ['total_cells', 'date', 'cells_has_data'];
     public function user(){
-        return $this->hasMany(CustomUser::class, 'user_id');
+        return $this->hasMany(User::class, 'user_id');
     }
 }
