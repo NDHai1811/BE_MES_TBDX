@@ -28,12 +28,12 @@ class KhuonController extends AdminController
     public static function registerRoutes()
     {
         Route::controller(self::class)->group(function () {
-            Route::get('khuon/list', [KhuonController::class, 'getKhuon']);
-            Route::patch('khuon/update', [KhuonController::class, 'updateKhuon']);
-            Route::post('khuon/create', [KhuonController::class, 'createKhuon']);
-            Route::delete('khuon/delete', [KhuonController::class, 'deleteKhuon']);
-            Route::get('khuon/export', [KhuonController::class, 'exportKhuon']);
-            Route::post('khuon/import', [KhuonController::class, 'importKhuon']);
+            Route::get('molds/list', [KhuonController::class, 'getKhuon']);
+            Route::patch('molds/update', [KhuonController::class, 'updateKhuon']);
+            Route::post('molds/create', [KhuonController::class, 'createKhuon']);
+            Route::delete('molds/delete', [KhuonController::class, 'deleteKhuon']);
+            Route::get('molds/export', [KhuonController::class, 'exportKhuon']);
+            Route::post('molds/import', [KhuonController::class, 'importKhuon']);
         });
     }
 
@@ -49,17 +49,10 @@ class KhuonController extends AdminController
         if (isset($request->kich_thuoc)) {
             $query->where('kich_thuoc', 'like', "%$request->kich_thuoc%");
         }
-        if (isset($request->page) && isset($request->pageSize)) {
-            $count = $query->count();
-            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
-            $khuon = $query->get();
-            foreach ($khuon as $value) {
-                $value->designer_name = $value->designer->name ?? null;
-            }
-            return $this->success(['data' => $khuon, 'totalPage' => $count]);
-        } else {
-            $khuon = $query->get();
-            return $this->success($khuon);
+        $records = $query->paginate($request->pageSize ?? null);
+        $molds = $records->items();
+        foreach ($molds as $value) {
+            $value->designer_name = $value->designer->name ?? null;
         }
     }
     public function updateKhuon(Request $request)
