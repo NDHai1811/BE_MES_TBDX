@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\Customer;
 use App\Models\User;
 use App\Models\ErrorLog;
@@ -54,6 +55,7 @@ class KhuonController extends AdminController
         foreach ($molds as $value) {
             $value->designer_name = $value->designer->name ?? null;
         }
+        return $this->success(['data' => $molds, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function updateKhuon(Request $request)
     {
