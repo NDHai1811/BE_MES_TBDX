@@ -22,7 +22,6 @@ use App\Admin\Controllers\OrderController;
 use App\Admin\Controllers\PermissionController;
 use App\Admin\Controllers\RoleController;
 use App\Admin\Controllers\ShiftAssignmentController;
-use App\Admin\Controllers\ShiftController;
 use App\Admin\Controllers\TestCriteriaController;
 use App\Admin\Controllers\UserController;
 use App\Admin\Controllers\UserMachineController;
@@ -30,7 +29,6 @@ use App\Admin\Controllers\VehicleController;
 use App\Admin\Controllers\VOCRegisterController;
 use App\Admin\Controllers\VOCTypeController;
 use App\Admin\Controllers\WebsocketController;
-use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 
@@ -98,7 +96,7 @@ Route::group([
     $router->post('import/tieu_chuan_ncc', [ApiController::class, 'importTieuChuanNCC']);
     $router->post('locator-mtl-map-import', [ApiController::class, 'importLocatorMLTMap']);
     $router->post('orders/import-from-plan', [OrderController::class, 'importOrdersFromPLan']);
-});
+});                                                                                                                                                                                                                              
 
 //Api for test porpose
 Route::group([

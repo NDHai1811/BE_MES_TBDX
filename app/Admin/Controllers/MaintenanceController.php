@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\Maintenance;
 use App\Models\MaintenanceDetail;
 use Encore\Admin\Controllers\AdminController;
@@ -37,8 +38,9 @@ class MaintenanceController extends AdminController
         if(isset($request->name)){
             $query->where('name', 'like', "%$request->name%");
         }
-        $maintain = $query->get();
-        return $this->success($maintain);
+        $records = $query->paginate($request->pageSize ?? null);
+        $maintain = $records->items();
+        return $this->success(['data' => $maintain, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function getMaintenanceDetail(Request $request){
         $maintain = Maintenance::with('detail', 'machine')->where('id', $request->id)->first();

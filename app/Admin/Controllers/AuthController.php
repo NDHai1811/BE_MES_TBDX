@@ -35,6 +35,7 @@ class AuthController extends Controller
             // $user->tokens()->delete();
             $user->update(['login_times_in_day'=>$user->login_times_in_day + 1, 'last_use_at'=>Carbon::now()]);
             $user->token = $user->createToken('')->plainTextToken;
+            $user->permissions = $user->roles->flatMap->permissions->pluck('slug')->toArray();
             return $this->success($user, 'Đăng nhập thành công');
         }
         return $this->failure([], 'Sai tên đăng nhập hoặc mật khẩu!');
