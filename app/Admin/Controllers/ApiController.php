@@ -2614,7 +2614,6 @@ class ApiController extends AdminController
 
     public function productionPlan(Request $request)
     {
-        return $request;
         $query = ProductionPlan::with('order', 'machine.line', 'orders', 'creator:id,name')->orderBy('thu_tu_uu_tien')->orderBy('updated_at', 'DESC');
         return $query->get();
         if (isset($request->end_date) && isset($request->start_date)) {

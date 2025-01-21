@@ -5105,45 +5105,9 @@ class ApiUIController extends AdminController
     }
     public function wtf()
     {
-        // return LSXPallet::with(['warehouseFGLog'=>function($sub){
-        //     $sub->where('type', 2);
-        // }])->limit(10000)->get();
-        // $lsx_pallets = LSXPallet::with(['warehouseFGLog'])->chunk(10000, function ($lsx_pallet) {
-        //     $group = [];
-        //     foreach ($lsx_pallet as $value) {
-        //         $exported = $value->warehouseFGLog->filter(function ($value) {
-        //             return $value->type === 2;
-        //         });
-        //         Log::debug($exported);
-        //         $sl = $value->so_luong - array_sum($exported->pluck('so_luong')->toArray());
-        //         if ($sl >= 0) {
-        //             $group[] = [
-        //                 'id' => $value->id,
-        //                 'remain_quantity' => $sl > 0 ? $sl : 0
-        //             ];
-        //         }
-        //     }
-        //     LSXPallet::upsert($group, ['id'], ['remain_quantity']);
-        // });
-
-        // $logs = WarehouseFGLog::whereNull('order_id')->orWhere('order_id', '')->get();
-        // foreach ($logs as $log) {
-        //     $tem = Tem::where('lo_sx', $log->lo_sx)->first();
-        //     if($tem){
-        //         $log->update(['order_id' => $tem->order_id]);
-        //         $log->lo_sx_pallet()->update(['order_id' => $tem->order_id]);
-        //     }
-        // }
-
-        // $count = InfoCongDoan::whereNull('order_id')->count();
-        // return $count;
-        $infos = InfoCongDoan::with('tem')->whereNull('order_id')->get();
-        foreach ($infos as $info) {
-            if ($info->tem) {
-                $info->update(['order_id' => $info->tem->order_id ?? null]);
-            }
-        }
-        return 'ok';
+        $product_orders = array();
+        return count(array_unique(array_column($product_orders, 'product_id')));
+        return implode(',', array_unique(array_column($product_orders, 'product_id')));
     }
 
     public function deleteDuplicate()

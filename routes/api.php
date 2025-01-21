@@ -100,7 +100,7 @@ Route::group([
 
 //Api for test porpose
 Route::group([
-    'prefix'        => "/api",
+    'prefix'        => "/",
     'middleware'    => [],
     'as'            => '',
 ], function (Router $router) {
