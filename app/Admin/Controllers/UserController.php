@@ -293,7 +293,7 @@ class UserController extends AdminController
 
     public function profile(Request $request){
         $user = $request->user();
-        $user->permission = $user->roles->flatMap->permissions;
+        $user->permissions = $user->roles->flatMap->permissions;
         return $this->success($user);
     }
 }
