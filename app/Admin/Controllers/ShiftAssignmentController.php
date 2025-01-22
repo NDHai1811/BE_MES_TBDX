@@ -31,7 +31,7 @@ class ShiftAssignmentController extends AdminController
             Route::post('shift-assignment/create', [ShiftAssignmentController::class, 'createShiftAssignment']);
             Route::delete('shift-assignment/delete', [ShiftAssignmentController::class, 'deleteShiftAssignment']);
             Route::patch('shift-assignment/update', [ShiftAssignmentController::class, 'updateShiftAssignment']);
-            Route::patch('shift/list', [ShiftAssignmentController::class, 'getShift']);
+            Route::get('shift/list', [ShiftAssignmentController::class, 'getShift']);
         });
     }
 
