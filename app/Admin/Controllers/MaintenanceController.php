@@ -27,7 +27,7 @@ class MaintenanceController extends AdminController
             Route::get('maintenance/detail', [MaintenanceController::class, 'getMaintenanceDetail']);
             Route::patch('maintenance/update', [MaintenanceController::class, 'updateMaintenance']);
             Route::post('maintenance/create', [MaintenanceController::class, 'createMaintenance']);
-            Route::post('maintenance/delete', [MaintenanceController::class, 'deleteMaintenance']);
+            Route::delete('maintenance/delete', [MaintenanceController::class, 'deleteMaintenance']);
             Route::get('maintenance/export', [MaintenanceController::class, 'exportMaintenance']);
             Route::post('maintenance/import', [MaintenanceController::class, 'importMaintenance']);
         });
