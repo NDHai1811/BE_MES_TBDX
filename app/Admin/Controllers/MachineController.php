@@ -32,46 +32,44 @@ class MachineController extends AdminController
     {
         Route::controller(self::class)->group(function () {
             Route::get('machines/list', [MachineController::class, 'getMachines']);
-            Route::patch('machines/update', [MachineController::class, 'updateMachine']);
+            Route::patch('machines/update/{id}', [MachineController::class, 'updateMachine']);
             Route::post('machines/create', [MachineController::class, 'createMachine']);
-            Route::delete('machines/delete', [MachineController::class, 'deleteMachines']);
+            Route::delete('machines/delete/{id}', [MachineController::class, 'deleteMachines']);
             Route::get('machines/export', [MachineController::class, 'exportMachines']);
             Route::post('machines/import', [MachineController::class, 'importMachines']);
         });
     }
 
-    public function getMachines(Request $request)
+    function queryMachine($request)
     {
-        $query = Machine::with('line')->orderBy('created_at')->whereNull('parent_id');
+        $query = Machine::with('line')->orderBy('id')->whereNull('parent_id');
         if (isset($request->id)) {
             $query->where('id', 'like', "%$request->id%");
         }
         if (isset($request->name)) {
             $query->where('name', 'like', "%$request->name%");
         }
+        return $query;
+    }
+
+    public function getMachines(Request $request)
+    {
+        $query = $this->queryMachine($request);
         $records = $query->paginate($request->pageSize ?? null);
         $machines = $records->items();
         return $this->success(['data' => $machines, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
-    public function updateMachine(Request $request)
-    {
-        $line_arr = [];
-        $lines = Line::all();
-        foreach ($lines as $line) {
-            $line_arr[Str::slug($line->name)] = $line->id;
-        }
 
+    public function updateMachine(Request $request, $id)
+    {
         $input = $request->all();
-        if (isset($line_arr[Str::slug($input['line'])])) {
-            $input['line_id'] = $line_arr[Str::slug($input['line'])];
-        }
-        $validated = Machine::validateUpdate($input);
+        $validated = Machine::validate($input, $id);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
-        $machine = Machine::where('id', $input['id'])->first();
+        $machine = Machine::find($id);
         if ($machine) {
-            $update = $machine->update($input);
+            $machine->update($input);
             return $this->success($machine);
         } else {
             return $this->failure('', 'Không tìm thấy máy');
@@ -80,17 +78,8 @@ class MachineController extends AdminController
 
     public function createMachine(Request $request)
     {
-        $line_arr = [];
-        $lines = Line::all();
-        foreach ($lines as $line) {
-            $line_arr[Str::slug($line->name)] = $line->id;
-        }
-
         $input = $request->all();
-        if (isset($line_arr[Str::slug($input['line'])])) {
-            $input['line_id'] = $line_arr[Str::slug($input['line'])];
-        }
-        $validated = Machine::validateUpdate($input);
+        $validated = Machine::validate($input);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
@@ -98,10 +87,13 @@ class MachineController extends AdminController
         return $this->success($machine, 'Tạo thành công');
     }
 
-    public function deleteMachines(Request $request)
+    public function deleteMachines($id)
     {
-        $input = $request->all();
-        Machine::whereIn('id', $input)->delete();
+        $machine = Machine::find($id);
+        if (!$machine) {
+            return $this->failure([], 'Không tìm thấy máy với ID được cung cấp', 404);
+        }
+        $machine->delete();
         return $this->success('Xoá thành công');
     }
 
@@ -111,7 +103,8 @@ class MachineController extends AdminController
         $timestamp = date('YmdHi');
         $file = "Máy_$timestamp.xlsx";
         $filePath = "export/$file";
-        $result = Excel::store(new MachineExport(), $filePath, 'excel');
+        $data = $this->queryMachine($request)->get();
+        $result = Excel::store(new MachineExport($data), $filePath, 'excel');
 
         if (empty($result))
             return $this->failure([], 'THAO TÁC THẤT BẠI', 500);

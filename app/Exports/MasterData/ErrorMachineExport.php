@@ -2,44 +2,34 @@
 
 namespace App\Exports\MasterData;
 
-use App\Helpers\Utilities;
-use App\Models\Equipment;
-use App\Models\Machine;
+use App\Models\ErrorMachine;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class MachineExport implements FromCollection, WithHeadings, WithMapping, WithStyles
+class ErrorMachineExport implements FromCollection, WithHeadings, WithMapping, WithStyles
 {
     private $rowNumber = 0;
-
-    protected $data;
-
-    public function __construct($data)
-    {
-        $this->data = $data;
-    }
 
     /**
     * @return \Illuminate\Support\Collection
     */
     public function collection()
     {
-        return $this->data; // Dữ liệu xuất ra file
+        return ErrorMachine::all();
     }
 
     public function headings(): array
     {
         return [
             'STT',
-            'Mã máy',
-            'Tên máy',
+            'Mã lỗi',
+            'Tên lỗi',
             'Công đoạn',
-            'Kiểu loại',
-            'Mã số',
-            'IOT'
+            'Nguyên nhân',
+            'Cách xử lý',
         ];
     }
 
@@ -49,11 +39,10 @@ class MachineExport implements FromCollection, WithHeadings, WithMapping, WithSt
         return [
             $this->rowNumber,
             $record->id,
-            $record->name,
+            $record->ten_su_co,
             $record->line->name ?? null,
-            $record->kieu_loai,
-            $record->device_id,
-            $record->is_iot ? 'Có' : 'Không'
+            $record->nguyen_nhan,
+            $record->ma_so,
         ];
     }
 

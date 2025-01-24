@@ -36,16 +36,17 @@ class MachineImport implements ToCollection, WithHeadingRow, WithStartRow
 
     protected function importRow(array $row)
     {
+        if (!$row['id'] || !$row['name'] || !$row['line_name']) {
+            return; // Bỏ qua hàng nếu tên thiết bị không tồn tại
+            // Log::debug($row);
+        }
+
         $line = Line::where(['name' => $row['line_name']])->first();
         if(!$line){
             throw new \Exception('Không tìm thấy công đoạn: ' . $row['line_name']);
         }
 
         $lineId = $line->id;
-        if (!$row['id'] || !$row['name'] || !$row['line_name']) {
-            return; // Bỏ qua hàng nếu tên thiết bị không tồn tại
-            // Log::debug($row);
-        }
 
         // Tạo Machine
         $machine = Machine::updateOrCreate([
@@ -54,7 +55,7 @@ class MachineImport implements ToCollection, WithHeadingRow, WithStartRow
             'machine_name' => $row['name'],
             'line_id' => $lineId,
             'kieu_loai' => $row['kieu_loai'] ?? null,
-            'ma_so' => $row['ma_so'] ?? null,
+            'device_id' => $row['device_id'] ?? null,
             'is_iot' => $row['is_iot'] == 'Có' ? 1 : 0,
         ]);
     }

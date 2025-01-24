@@ -15,7 +15,7 @@ class Machine extends Model
 {
     use HasFactory;
     public $incrementing = false;
-    protected $fillable = ['id', 'name', 'code', 'is_iot', 'line_id', 'kieu_loai', 'hidden', 'ordering', 'device_id'];
+    protected $fillable = ['id', 'name', 'parent_id', 'is_iot', 'line_id', 'kieu_loai', 'device_id'];
     protected $hidden = ['created_at', 'updated_at'];
 
     public function plan()
@@ -69,21 +69,21 @@ class Machine extends Model
         return $this->hasMany(InfoCongDoan::class, 'line_id', 'line_id');
     }
 
-    static function validateUpdate($input, $is_update = true)
+    static function validate($input, $id = null)
     {
         $validated = Validator::make(
             $input,
             [
-                'id'=>$is_update ? 'required' : 'required|unique:error_machine',
+                'id' => 'required|unique:machines,id,' . ($id ?? ""),
                 'line_id' => 'required',
-                'name'=>'required', 
-                'line_id'=>'required', 
+                'name' => 'required',
+                'line_id' => 'required',
             ],
             [
                 'id.required' => 'Không có mã máy',
                 'id.unique' => 'Mã máy đã tồn tại',
                 'line_id.required' => 'Không tìm thấy công đoạn',
-                'name.required'=>'Không có tên máy', 
+                'name.required' => 'Không có tên máy',
             ]
         );
         return $validated;
