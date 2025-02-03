@@ -4,6 +4,7 @@ namespace App\Admin\Controllers;
 
 use App\Exports\MasterData\ErrorMachineExport;
 use App\Helpers\QueryHelper;
+use App\Imports\ErrorMachineImport;
 use App\Models\ErrorLog;
 use App\Models\ErrorMachine;
 use Encore\Admin\Controllers\AdminController;
@@ -29,17 +30,32 @@ class ErrorMachineController extends AdminController
     {
         Route::controller(self::class)->group(function () {
             Route::get('error-machines/list', [ErrorMachineController::class, 'getErrorMachines']);
-            Route::patch('error-machines/update', [ErrorMachineController::class, 'updateErrorMachine']);
+            Route::patch('error-machines/update/{id}', [ErrorMachineController::class, 'updateErrorMachine']);
             Route::post('error-machines/create', [ErrorMachineController::class, 'createErrorMachine']);
-            Route::delete('error-machines/delete', [ErrorMachineController::class, 'deleteErrorMachines']);
+            Route::delete('error-machines/delete/{id}', [ErrorMachineController::class, 'deleteErrorMachines']);
             Route::get('error-machines/export', [ErrorMachineController::class, 'exportErrorMachines']);
             Route::post('error-machines/import', [ErrorMachineController::class, 'importErrorMachines']);
         });
     }
 
+    function queryErrorMachine($request)
+    {
+        $query = ErrorMachine::with('line')->orderBy('id');
+        if (isset($request->line_id)) {
+            $query->where('line_id', $request->line_id);
+        }
+        if (isset($request->id)) {
+            $query->where('id', 'like', "%" . $request->id . "%");
+        }
+        if (isset($request->ten_su_co)) {
+            $query->where('ten_su_co', 'like', "%" . $request->ten_su_co . "%");
+        }
+        return $query;
+    }
+
     public function getErrorMachines(Request $request)
     {
-        $query = ErrorMachine::with('line')->has('line')->orderBy('created_at');
+        $query = $this->queryErrorMachine($request);
         if (isset($request->line_id)) {
             $query->where('line_id', $request->line_id);
         }
@@ -54,71 +70,52 @@ class ErrorMachineController extends AdminController
         return $this->success(['data' => $error_machines, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
 
-    public function updateErrorMachine(Request $request)
+    public function updateErrorMachine(Request $request, $id)
     {
-        try {
-            DB::beginTransaction();
-            $input = $request->all();
-            $validated = ErrorMachine::validateUpdate($input);
-            if ($validated->fails()) {
-                return $this->failure('', $validated->errors()->first());
-            }
-            $error = ErrorMachine::where('id', $input['id'])->first();
-            if ($error) {
-                $update = $error->update($input);
-            } else {
-                return $this->failure('', 'Không tìm thấy lỗi máy');
-            }
-            DB::commit();
-            return $this->success($error);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+        $input = $request->all();
+        $validated = ErrorMachine::validate($input, $id);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
         }
+        $error = ErrorMachine::find($id);
+        if ($error) {
+            $error->update($input);
+        } else {
+            return $this->failure('', 'Không tìm thấy lỗi máy');
+        }
+        return $this->success($error, 'Cập nhật thành công');
     }
 
     public function createErrorMachine(Request $request)
     {
-        try {
-            DB::beginTransaction();
-            $input = $request->all();
-            $validated = ErrorMachine::validateUpdate($input, false);
-            if ($validated->fails()) {
-                return $this->failure('', $validated->errors()->first());
-            }
-            $error = ErrorMachine::create($input);
-            DB::commit();
-            return $this->success($error, 'Tạo thành công');
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+        $input = $request->all();
+        $validated = ErrorMachine::validate($input);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
         }
+        $error = ErrorMachine::create($input);
+        return $this->success($error, 'Tạo thành công');
     }
 
-    public function deleteErrorMachines(Request $request)
+    public function deleteErrorMachines(Request $request, $id)
     {
-        try {
-            DB::beginTransaction();
-            $input = $request->all();
-            ErrorMachine::whereIn('id', $input)->delete();
-            DB::commit();
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+        $error = ErrorMachine::find($id);
+        if ($error) {
+            $error->delete();
+        } else {
+            return $this->failure('', 'Không tìm thấy lỗi máy');
         }
         return $this->success('Xoá thành công');
     }
 
-    public function exportMachines(Request $request)
+    public function exportErrorMachines (Request $request)
     {
         # Set file path
         $timestamp = date('YmdHi');
         $file = "LỗiMáy_$timestamp.xlsx";
         $filePath = "export/$file";
-        $result = Excel::store(new ErrorMachineExport(), $filePath, 'excel');
+        $data = $this->queryErrorMachine($request)->get();
+        $result = Excel::store(new ErrorMachineExport($data), $filePath, 'excel');
 
         if (empty($result))
             return $this->failure([], 'THAO TÁC THẤT BẠI', 500);
@@ -139,14 +136,14 @@ class ErrorMachineController extends AdminController
         ]);
     }
 
-    public function importMachines(Request $request)
+    public function importErrorMachines(Request $request)
     {
         $request->validate([
             'file' => 'required|mimes:xlsx',
         ]);
 
         try {
-            Excel::import(new ErrorMachineExport, $request->file('file'));
+            Excel::import(new ErrorMachineImport, $request->file('file'));
         } catch (\Throwable $th) {
             return $this->failure($th->getMessage(), 'THỰC HIỆN THẤT BẠI');
         }

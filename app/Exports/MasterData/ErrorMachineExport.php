@@ -13,12 +13,19 @@ class ErrorMachineExport implements FromCollection, WithHeadings, WithMapping, W
 {
     private $rowNumber = 0;
 
+    protected $data;
+
+    public function __construct($data)
+    {
+        $this->data = $data;
+    }
+
     /**
     * @return \Illuminate\Support\Collection
     */
     public function collection()
     {
-        return ErrorMachine::all();
+        return $this->data;
     }
 
     public function headings(): array
@@ -39,10 +46,10 @@ class ErrorMachineExport implements FromCollection, WithHeadings, WithMapping, W
         return [
             $this->rowNumber,
             $record->id,
-            $record->ten_su_co,
+            $record->name,
             $record->line->name ?? null,
-            $record->nguyen_nhan,
-            $record->ma_so,
+            $record->reason,
+            $record->behavior,
         ];
     }
 
