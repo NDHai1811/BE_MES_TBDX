@@ -11,19 +11,19 @@ class TestCriteria extends Model
 {
     use HasFactory;
     public $incrementing = false;
-    protected $fillable = ['id', 'phan_loai', 'line_id', 'tieu_chuan', 'nguyen_tac', 'frequency', 'name', 'ghi_chu', 'hang_muc', 'phan_dinh'];
+    protected $fillable = ['id', 'name', 'line_id', 'tieu_chuan', 'nguyen_tac', 'frequency', 'chi_tieu', 'ghi_chu', 'hang_muc', 'phan_dinh'];
     protected $hidden = ['created_at', 'updated_at'];
     public function line()
     {
         return $this->belongsTo(Line::class);
     }
 
-    static function validate($input)
+    static function validate($input, $id = "")
     {
         $validated = Validator::make(
             $input,
             [
-                'id'=>'required|unique:test_criterias' . (isset($input['id']) ? ',id,'.$input['id'] : ''),
+                'id'=>'required|unique:test_criterias,id,' . $id,
                 'line_id' => 'required',
             ],
             [

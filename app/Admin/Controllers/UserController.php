@@ -59,6 +59,8 @@ class UserController extends AdminController
         foreach ($users as $key => $user) {
             $user->usage_time = round($user->usage_time_in_day / 60);
             $user->department_name = $user->department->name ?? "";
+            $user->value = $user->id;
+            $user->label = $user->name;
         }
         return $this->success(['data' => $users, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
