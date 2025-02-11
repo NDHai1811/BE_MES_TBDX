@@ -62,7 +62,7 @@ class UserController extends AdminController
             $user->value = $user->id;
             $user->label = $user->name;
         }
-        return $this->success(['data' => $users, 'pagination' => QueryHelper::pagination($request, $records)]);
+        return $this->success($users);
     }
     public function getUserRoles(Request $request)
     {
