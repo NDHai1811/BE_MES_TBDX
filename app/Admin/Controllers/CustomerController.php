@@ -2,7 +2,9 @@
 
 namespace App\Admin\Controllers;
 
+use App\Exports\MasterData\CustomerExport;
 use App\Helpers\QueryHelper;
+use App\Imports\CustomerImport;
 use App\Models\Customer;
 use App\Models\CustomerShort;
 use App\Models\ErrorLog;
@@ -15,7 +17,10 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use Illuminate\Support\Str;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
 class CustomerController extends AdminController
 {
@@ -33,9 +38,8 @@ class CustomerController extends AdminController
             Route::get('real-customer-list', [CustomerController::class,'getCustomers']);
         });
     }
-    
-    public function getCustomerByShortName(Request $request)
-    {
+
+    function customerQuery(Request $request){
         $query = CustomerShort::with('customer')->orderBy('customer_id')->orderBy('short_name');
         if (isset($request->short_name)) {
             $query->where('short_name', 'like', "%$request->short_name%");
@@ -48,6 +52,12 @@ class CustomerController extends AdminController
         if (isset($request->id)) {
             $query->where('customer_id', 'like', "%$request->id%");
         }
+        return $query;
+    }
+    
+    public function getCustomerByShortName(Request $request)
+    {
+        $query = $this->customerQuery($request);
         $records = $query->paginate($request->pageSize ?? null);
         $customer_short = $records->items();
         foreach ($customer_short as $customer) {
@@ -124,138 +134,44 @@ class CustomerController extends AdminController
 
     public function exportCustomer(Request $request)
     {
-        $query = CustomerShort::with('customer')->orderBy('short_name');
-        if (isset($request->name)) {
-            $query->where('short_name', 'like', "%$request->name%");
-        }
-        if (isset($request->id)) {
-            $query->where('customer_id', 'like', "%$request->id%");
-        }
-        $customer_short = $query->get();
-        foreach ($customer_short as $customer) {
-            $customer->name = $customer->customer->name ?? "";
-        }
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $start_row = 2;
-        $start_col = 1;
-        $centerStyle = [
-            'alignment' => [
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-            ],
-            'borders' => array(
-                'outCustomer' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
-        $headerStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => array('argb' => 'BFBFBF')
-            ]
-        ]);
-        $titleStyle = array_merge($centerStyle, [
-            'font' => ['size' => 16, 'bold' => true],
-        ]);
-        $border = [
-            'borders' => array(
-                'allBorders' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
-        $header = ['STT', 'Tên KH rút gọn', 'Mã KH (không quá 5 ký tự)', 'Tên khách hàng'];
-        $table_key = [
-            'A' => 'stt',
-            'B' => 'short_name',
-            'C' => 'customer_id',
-            'D' => 'name',
-        ];
-        foreach ($header as $key => $cell) {
-            if (!is_array($cell)) {
-                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
-            }
-            $start_col += 1;
-        }
+        # Set file path
+        $timestamp = date('YmdHi');
+        $file = "KhachHang_$timestamp.xlsx";
+        $filePath = "export/$file";
+        $data = $this->customerQuery($request)->get();
+        $result = Excel::store(new CustomerExport($data), $filePath, 'excel');
 
-        $sheet->setCellValue([1, 1], 'Quản lý khách hàng')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
-        $sheet->getRowDimension(1)->setRowHeight(40);
-        $table_col = 1;
-        $table_row = $start_row + 1;
-        foreach ($customer_short->toArray() as $key => $row) {
-            $table_col = 1;
-            $sheet->setCellValue([1, $table_row], $key + 1)->getStyle([1, $table_row])->applyFromArray($centerStyle);
-            $row = (array)$row;
-            foreach ($table_key as $k => $value) {
-                if (isset($row[$value])) {
-                    $sheet->setCellValue($k . $table_row, $row[$value])->getStyle($k . $table_row)->applyFromArray($centerStyle);
-                } else {
-                    continue;
-                }
-                $table_col += 1;
-            }
-            $table_row += 1;
-        }
-        foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
-        }
-        header("Content-Description: File Transfer");
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Danh sách khách hàng.xlsx"');
-        header('Cache-Control: max-age=0');
-        header("Content-Transfer-Encoding: binary");
-        header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $writer->save('exported_files/Danh sách khách hàng.xlsx');
-        $href = '/exported_files/Danh sách khách hàng.xlsx';
-        return $this->success($href);
+        if (empty($result))
+            return $this->failure([], 'THAO TÁC THẤT BẠI', 500);
+        # Generate file base64
+        $fileContent = Storage::disk('excel')->get($filePath);
+        $fileType = File::mimeType(storage_path("app/excel/$filePath"));
+        $base64 = base64_encode($fileContent);
+        $fileBase64Uri = "data:$fileType;base64,$base64";
+
+        # Delete if needed
+        Storage::disk('excel')->delete($filePath);
+
+        # Return
+        return $this->success([
+            'file' => $file,
+            'type' => $fileType,
+            'data' => $fileBase64Uri,
+        ]);
     }
 
     public function importCustomer(Request $request)
     {
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
-        if ($extension == 'csv') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
-        } elseif ($extension == 'xlsx') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-        } else {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
-        }
-        // file path
+        $request->validate([
+            'file' => 'required|mimes:xlsx',
+        ]);
+
         try {
-            DB::beginTransaction();
-            $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
-            $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-            Customer::query()->delete();
-            CustomerShort::query()->delete();
-            foreach ($allDataInSheet as $key => $row) {
-                if ($key > 1) {
-                    if ($row['C'] && $row['B']) {
-                        $input['id'] = $row['C'];
-                        $input['customer_id'] = $row['C'];
-                        $input['short_name'] = $row['B'];
-                        $input['name'] = $row['D'];
-                        CustomerShort::create($input);
-                        $check = Customer::find($input['id']);
-                        if (!$check) {
-                            Customer::create($input);
-                        }
-                    }
-                }
-            }
-            DB::commit();
+            Excel::import(new CustomerImport, $request->file('file'));
         } catch (\Throwable $th) {
-            DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure($th, "Đã xảy ra lỗi");
+            return $this->failure($th->getMessage(), 'THỰC HIỆN THẤT BẠI');
         }
 
-        return $this->success([], 'Upload thành công');
+        return $this->success([], 'NHẬP DỮ LIỆU THÀNH CÔNG');
     }
 }

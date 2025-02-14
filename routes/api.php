@@ -22,6 +22,7 @@ use App\Admin\Controllers\OrderController;
 use App\Admin\Controllers\PermissionController;
 use App\Admin\Controllers\RoleController;
 use App\Admin\Controllers\ShiftAssignmentController;
+use App\Admin\Controllers\SupplierController;
 use App\Admin\Controllers\TestCriteriaController;
 use App\Admin\Controllers\UserController;
 use App\Admin\Controllers\UserMachineController;
@@ -87,6 +88,7 @@ Route::group([
     VOCRegisterController::registerRoutes();//VOC
     KPIController::registerRoutes();//KPI chart
     DepartmentController::registerRoutes();//Bộ phận
+    SupplierController::registerRoutes();//Nhà cung cấp
     $router->post('manufacture/production-plan/import', [ApiController::class, 'importKHSX']);
     $router->post('import/vehicle', [ApiUIController::class, 'importVehicle']);
     $router->post('update-tem', [ApiUIController::class, 'updateTem']);

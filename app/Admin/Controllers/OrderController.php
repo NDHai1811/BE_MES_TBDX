@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\Customer;
 use App\Models\CustomerShort;
 use App\Models\DRC;
@@ -38,9 +39,9 @@ class OrderController extends AdminController
     {
         Route::controller(self::class)->group(function () {
             Route::get('orders/list', [OrderController::class, 'getOrders']);
-            Route::patch('orders/update', [OrderController::class, 'updateOrders'])->middleware('check.permission:edit-order');
+            Route::patch('orders/update/{id}', [OrderController::class, 'updateOrders'])->middleware('check.permission:edit-order');
             Route::post('orders/create', [OrderController::class, 'createOrder'])->middleware('check.permission:edit-order');
-            Route::delete('orders/delete', [OrderController::class, 'deleteOrders'])->middleware('check.permission:edit-order');
+            Route::delete('orders/delete/{id}', [OrderController::class, 'deleteOrders'])->middleware('check.permission:edit-order');
             Route::get('orders/export', [OrderController::class, 'exportOrders']);
             Route::post('orders/import', [OrderController::class, 'importOrders'])->middleware('check.permission:edit-order');
             Route::post('orders/split', [OrderController::class, 'splitOrders'])->middleware('check.permission:edit-order');
@@ -48,9 +49,8 @@ class OrderController extends AdminController
         });
     }
 
-    public function getOrders(Request $request)
-    {
-        $query = Order::with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
+    function orderQuery(Request $request){
+        $query = Order::orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
         if (isset($request->status)) {
             if ($request->status === 'all') {
                 $query->withTrashed();
@@ -151,8 +151,13 @@ class OrderController extends AdminController
         if (isset($request->xuong_giao)) {
             $query->where('xuong_giao', $request->xuong_giao);
         }
-        $count = $query->count();
-        $totalPage = $count;
+        return $query->with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name']);
+    }
+
+    public function getOrders(Request $request)
+    {
+        $query = $this->orderQuery($request);
+        $totalPage = $query->count();
         $role_ids = $request->user()->roles()->pluck('id')->toArray();
         $table = Table::where('table', 'orders')->first();
         $field_query = FieldRole::where('table_id', $table->id);
@@ -166,18 +171,13 @@ class OrderController extends AdminController
             $pageSize = $request->pageSize;
             $query->offset($page * $pageSize)->limit($pageSize ?? 10);
         }
-        $records = $query->select('*', 'sl as sl_dinh_muc')->get();
-        $res = [
-            "data" => $records,
-            "totalPage" => $totalPage,
-            "editableColumns" => $fields,
-        ];
-        return $this->success($res);
+        $records = $query->paginate($request->pageSize ?? null);
+        return $this->success(['data' => $records, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
-    public function updateOrders(Request $request)
+    public function updateOrders(Request $request, $id)
     {
         $input = $request->all();
-        $order = Order::where('id', $input['id'])->first();
+        $order = Order::find($id);
         if ($order) {
             try {
                 DB::beginTransaction();
@@ -355,12 +355,11 @@ class OrderController extends AdminController
         return $this->success($order, 'Tạo thành công');
     }
 
-    public function deleteOrders(Request $request)
+    public function deleteOrders(Request $request, $id)
     {
         try {
             DB::beginTransaction();
-            $input = $request->all();
-            Order::whereIn('id', $request->ids)->delete();
+            Order::whereIn('id', $id)->delete();
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
