@@ -172,6 +172,7 @@ class OrderController extends AdminController
             $query->offset($page * $pageSize)->limit($pageSize ?? 10);
         }
         $records = $query->paginate($request->pageSize ?? null);
+        return $this->success($records);
         return $this->success(['data' => $records, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function updateOrders(Request $request, $id)
