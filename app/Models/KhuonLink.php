@@ -17,7 +17,7 @@ class KhuonLink extends Model
         'sl_khuon', 'machine_id', 'buyer_note', 'note', 'layout', 'supplier',
         'ngay_dat_khuon', 'pad_xe_ranh', 'designer_id'
     ];
-    static function validateUpdate($input, $is_update = true)
+    static function validate($input, $is_update = true)
     {
         $validated = Validator::make(
             $input,

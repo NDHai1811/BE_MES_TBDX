@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 class Error extends Model
 {
     use HasFactory;
-    protected $fillable = ['id', 'name', 'noi_dung', 'nguyen_nhan', 'khac_phuc', 'phong_ngua', 'line_id'];
+    protected $fillable = ['id', 'name', 'line_id'];
     public $incrementing = false;
     protected $casts = [
         "id" => "string"
@@ -21,12 +21,12 @@ class Error extends Model
         return $this->belongsTo(Line::class, 'line_id');
     }
 
-    static function validateUpdate($input, $is_update = true)
+    static function validate($input, $id = null)
     {
         $validated = Validator::make(
             $input,
             [
-                'id'=>$is_update ? 'required' : 'required|unique:errors',
+                'id'=>'required|unique:errors,id,'.$id,
                 'name'=>'required',
                 'line_id' => 'required',
             ],

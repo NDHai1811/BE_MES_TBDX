@@ -2,7 +2,9 @@
 
 namespace App\Admin\Controllers;
 
+use App\Exports\MasterData\MoldExport;
 use App\Helpers\QueryHelper;
+use App\Imports\MoldImport;
 use App\Models\Customer;
 use App\Models\User;
 use App\Models\ErrorLog;
@@ -19,7 +21,10 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 use stdClass;
 
 class KhuonController extends AdminController
@@ -30,16 +35,15 @@ class KhuonController extends AdminController
     {
         Route::controller(self::class)->group(function () {
             Route::get('molds/list', [KhuonController::class, 'getKhuon']);
-            Route::patch('molds/update', [KhuonController::class, 'updateKhuon']);
+            Route::patch('molds/update/{id}', [KhuonController::class, 'updateKhuon']);
             Route::post('molds/create', [KhuonController::class, 'createKhuon']);
-            Route::delete('molds/delete', [KhuonController::class, 'deleteKhuon']);
+            Route::delete('molds/delete/{id}', [KhuonController::class, 'deleteKhuon']);
             Route::get('molds/export', [KhuonController::class, 'exportKhuon']);
             Route::post('molds/import', [KhuonController::class, 'importKhuon']);
         });
     }
 
-    public function getKhuon(Request $request)
-    {
+    public function khuonQuery(Request $reques){
         $query = KhuonLink::orderBy('created_at', 'DESC')->orderBy('khuon_id');
         if (isset($request->id)) {
             $query->where('khuon_id', 'like', "%$request->id%");
@@ -50,6 +54,12 @@ class KhuonController extends AdminController
         if (isset($request->kich_thuoc)) {
             $query->where('kich_thuoc', 'like', "%$request->kich_thuoc%");
         }
+        return $query;
+    }
+
+    public function getKhuon(Request $request)
+    {
+        $query = $this->khuonQuery($request);
         $records = $query->paginate($request->pageSize ?? null);
         $molds = $records->items();
         foreach ($molds as $value) {
@@ -57,10 +67,10 @@ class KhuonController extends AdminController
         }
         return $this->success(['data' => $molds, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
-    public function updateKhuon(Request $request)
+    public function updateKhuon(Request $request, $id)
     {
         $input = $request->all();
-        $khuon = KhuonLink::where('id', $input['id'])->first();
+        $khuon = KhuonLink::where('id', $id)->first();
         if ($khuon) {
             $validated = KhuonLink::validateUpdate($input);
             if ($validated->fails()) {
@@ -101,12 +111,12 @@ class KhuonController extends AdminController
         }
     }
 
-    public function deleteKhuon(Request $request)
+    public function deleteKhuon(Request $request, $id)
     {
         try {
             DB::beginTransaction();
             $input = $request->all();
-            KhuonLink::whereIn('id', $input)->delete();
+            KhuonLink::where('id', $id)->delete();
             DB::commit();
             return $this->success('Xoá thành công');
         } catch (\Throwable $th) {
@@ -119,205 +129,44 @@ class KhuonController extends AdminController
 
     public function importKhuon(Request $request)
     {
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
-        if ($extension == 'csv') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
-        } elseif ($extension == 'xlsx') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-        } else {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
-        }
-        // file path
-        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
-        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-        $khuon_link = [];
-        foreach ($allDataInSheet as $key => $row) {
-            $row = array_map("trim", $row);
-            if ($key > 2) {
-                if ($row['A']) {
-                    $input = [];
-                    $input['customer_id'] = $row['B'];
-                    $input['dai'] = $row['C'];
-                    $input['rong'] = $row['D'];
-                    $input['cao'] = $row['E'];
-                    $input['kich_thuoc'] = $row['F'];
-                    $input['phan_loai_1'] = Str::slug($row['G']);
-                    $input['buyer_id'] = $row['H'];
-                    $input['kho_khuon'] = $row['I'];
-                    $input['dai_khuon'] = $row['J'];
-                    $input['so_con'] = $row['K'];
-                    $input['so_manh_ghep'] = $row['L'];
-                    $input['pad_xe_ranh'] = $row['M'];
-                    $input['khuon_id'] = $row['N'];
-                    $input['machine_id'] = $row['O'];
-                    // $input['sl_khuon'] = $row['Q'];
-                    // $input['buyer_note'] = $row['Q'];
-                    $input['note'] = $row['P'];
-                    $input['layout'] = $row['Q'];
-                    $input['supplier'] = $row['R'];
-                    $input['ngay_dat_khuon'] = $row['S'];
-                    $designer = User::where('name', 'like', "%" . trim($row['T']) . "%")->first();
-                    $input['designer_id'] = $designer->id ?? null;
-                    $khuon_link[] = array_filter($input);
-                }
-            }
-        }
+        $request->validate([
+            'file' => 'required|mimes:xlsx',
+        ]);
+
         try {
-            DB::beginTransaction();
-            KhuonLink::query()->delete();
-            foreach ($khuon_link as $key => $input) {
-                KhuonLink::insert($input);
-            }
-            DB::commit();
-            return $this->success([], 'Upload thành công');
+            Excel::import(new MoldImport, $request->file('file'));
         } catch (\Throwable $th) {
-            //throw $th;
-            DB::rollBack();
-            return $this->failure($th, 'Đã xảy ra lỗi');
+            return $this->failure($th->getMessage(), 'THỰC HIỆN THẤT BẠI');
         }
+
+        return $this->success([], 'NHẬP DỮ LIỆU THÀNH CÔNG');
     }
 
     public function exportKhuon(Request $request)
     {
-        $query = KhuonLink::orderBy('created_at', 'DESC')->orderBy('khuon_id');
-        if (isset($request->id)) {
-            $query->where('khuon_id', 'like', "%$request->id%");
-        }
-        if (isset($request->customer_id)) {
-            $query->where('customer_id', 'like', "%$request->customer_id%");
-        }
-        if (isset($request->kich_thuoc)) {
-            $query->where('kich_thuoc', 'like', "%$request->kich_thuoc%");
-        }
-        $khuon = $query->get();
-        $data = [];
-        foreach ($khuon as $key => $value) {
-            $obj = new stdClass;
-            $obj->stt = $key + 1;
-            $obj->short_name = $value->customer_id;
-            $obj->dai = $value->dai;
-            $obj->rong = $value->rong;
-            $obj->cao = $value->cao;
-            $obj->kich_thuoc = $value->kich_thuoc;
-            $obj->phan_loai_1 = $value->phan_loai_1;
-            $obj->buyer_id = $value->buyer_id;
-            $obj->kho_khuon = $value->kho_khuon;
-            $obj->dai_khuon = $value->dai_khuon;
-            $obj->so_con = $value->so_con;
-            $obj->so_manh_ghep = $value->so_manh_ghep;
-            $obj->pad_xe_ranh = $value->pad_xe_ranh;
-            $obj->khuon_id = $value->khuon_id;
-            $obj->machine_id = $value->machine_id;
-            $obj->note = $value->note;
-            $obj->layout = $value->layout;
-            $obj->supplier = $value->supplier;
-            $obj->ngay_dat_khuon = $value->ngay_dat_khuon;
-            $obj->designer_name = $value->designer->name ?? "";
-            $data[] = (array)$obj;
-        }
-        $centerStyle = [
-            'alignment' => [
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-                'wrapText' => true
-            ],
-            'borders' => array(
-                'outline' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
-        $headerStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => array('argb' => 'BFBFBF')
-            ]
+        # Set file path
+        $timestamp = date('YmdHi');
+        $file = "Khuon_$timestamp.xlsx";
+        $filePath = "export/$file";
+        $data = $this->khuonQuery($request)->get();
+        $result = Excel::store(new MoldExport($data), $filePath, 'excel');
+
+        if (empty($result))
+            return $this->failure([], 'THAO TÁC THẤT BẠI', 500);
+        # Generate file base64
+        $fileContent = Storage::disk('excel')->get($filePath);
+        $fileType = File::mimeType(storage_path("app/excel/$filePath"));
+        $base64 = base64_encode($fileContent);
+        $fileBase64Uri = "data:$fileType;base64,$base64";
+
+        # Delete if needed
+        Storage::disk('excel')->delete($filePath);
+
+        # Return
+        return $this->success([
+            'file' => $file,
+            'type' => $fileType,
+            'data' => $fileBase64Uri,
         ]);
-        $titleStyle = array_merge($centerStyle, [
-            'font' => ['size' => 16, 'bold' => true],
-        ]);
-        $border = [
-            'borders' => array(
-                'allBorders' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $start_row = 2;
-        $start_col = 1;
-        $sheet = $spreadsheet->getActiveSheet();
-        $header = [
-            'STT',
-            'Khách hàng',
-            'Kích thước ĐH'=>[
-                'Dài',
-                'Rộng',
-                'Cao',
-                'Kích thước chuẩn'
-            ],
-            'Phân loại 1',
-            'Mã buyer',
-            'Khuôn bế'=>[
-                'Khổ',
-                'Dài',
-                'Số con'
-            ],
-            'Số mảnh ghép',
-            'Pad xẻ rãnh',
-            'Mã khuôn bế',
-            'Máy',
-            'Ghi chú',
-            'Layout',
-            'Nhà cung cấp',
-            'Ngày đặt khuôn',
-            'Người thiết kế'
-        ];
-        foreach ($header as $key => $cell) {
-            if (!is_array($cell)) {
-                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
-            } else {
-                $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
-                foreach ($cell as $val) {
-                    $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
-                    $start_col += 1;
-                }
-                continue;
-            }
-            $start_col += 1;
-        }
-        $sheet->setCellValue([1, 1], 'Danh sách mã khuôn bế theo mã Buyer KH')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
-        $sheet->getRowDimension(1)->setRowHeight(40);
-        $sheet->fromArray($data, null, 'A4');
-        foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-        }
-        $start_row_table = $start_row + 1;
-        $sheet->getStyle([1, $start_row_table, $start_col - 1, count($data) + $start_row_table - 1])->applyFromArray(
-            array_merge(
-                $centerStyle,
-                array(
-                    'borders' => array(
-                        'allBorders' => array(
-                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                            'color' => array('argb' => '000000'),
-                        ),
-                    )
-                )
-            )
-        );
-        header("Content-Description: File Transfer");
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Danh sách mã khuôn bế.xlsx"');
-        header('Cache-Control: max-age=0');
-        header("Content-Transfer-Encoding: binary");
-        header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $writer->save('exported_files/Danh sách mã khuôn bế.xlsx');
-        $href = '/exported_files/Danh sách mã khuôn bế.xlsx';
-        return $this->success($href);
     }
 }

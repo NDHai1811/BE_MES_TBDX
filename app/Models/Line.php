@@ -34,15 +34,18 @@ class Line extends Model
         return $this->hasMany(ErrorMachine::class, 'line_id');
     }
 
-    static function validateUpdate($input, $is_update = true)
+    static function validate($input, $id = null)
     {
         $validated = Validator::make(
             $input,
             [
+                'id' => 'required|unique:lines,id,' . $id,
                 'name' => 'required',
             ],
             [
                 'name.required' => 'Không có tên công đoạn',
+                'id.required' => 'Không có mã công đoạn',
+                'id.unique' => 'Mã công đoạn đã tồn tại',
             ]
         );
         return $validated;
