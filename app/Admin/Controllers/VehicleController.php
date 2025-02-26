@@ -68,6 +68,7 @@ class VehicleController extends AdminController
             $record->user3_username = $record->assistant_driver2->username ?? "";
             $record->user3_phone_number = $record->assistant_driver2->phone_number ?? "";
         }
+        return $this->success($vehicles);
         return $this->success(['data' => $vehicles, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function updateVehicles(Request $request)
