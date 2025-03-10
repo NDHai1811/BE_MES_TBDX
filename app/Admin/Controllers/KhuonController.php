@@ -45,8 +45,8 @@ class KhuonController extends AdminController
 
     public function khuonQuery(Request $reques){
         $query = KhuonLink::orderBy('created_at', 'DESC')->orderBy('khuon_id');
-        if (isset($request->id)) {
-            $query->where('khuon_id', 'like', "%$request->id%");
+        if (isset($request->khuon_id)) {
+            $query->where('khuon_id', 'like', "%$request->khuon_id%");
         }
         if (isset($request->customer_id)) {
             $query->where('customer_id', 'like', "%$request->customer_id%");
