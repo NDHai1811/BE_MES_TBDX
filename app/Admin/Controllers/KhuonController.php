@@ -43,7 +43,7 @@ class KhuonController extends AdminController
         });
     }
 
-    public function khuonQuery(Request $reques){
+    public function khuonQuery(Request $request){
         $query = KhuonLink::orderBy('created_at', 'DESC')->orderBy('khuon_id');
         if (isset($request->khuon_id)) {
             $query->where('khuon_id', 'like', "%$request->khuon_id%");
