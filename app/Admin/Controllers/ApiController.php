@@ -4,6 +4,7 @@ namespace App\Admin\Controllers;
 
 use alhimik1986\PhpExcelTemplator\params\ExcelParam;
 use alhimik1986\PhpExcelTemplator\setters\CellSetterArrayValueSpecial;
+use App\Helpers\QueryHelper;
 use App\Models\Buyer;
 use App\Models\ProductionPlan;
 use App\Models\ErrorMachine;
@@ -5638,8 +5639,25 @@ class ApiController extends AdminController
 
     public function ui_getOrders(Request $request)
     {
-        return $this->success(Order::all());
+        $query = Order::query();
+        $page = $request->query('page');
+        $pageSize = $request->query('pageSize');
+        if (ctype_digit($page) && ctype_digit($pageSize) && $page > 0 && $pageSize > 0) {
+            $records = $query->paginate($pageSize, ['*'], 'page', $page);
+            return $this->success([
+                'data' => $records->items(),
+                'pagination' => QueryHelper::pagination($request, $records)
+            ]);
+        }
+        return $this->success([
+            'data' => Order::all(),
+            'pagination' => null
+        ]);
     }
+
+
+
+
 
     public function ui_getLoSanXuat()
     {
