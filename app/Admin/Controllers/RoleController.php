@@ -28,7 +28,7 @@ class RoleController extends AdminController
             Route::get('roles/permissions', [RoleController::class, 'getPermissions']);
             Route::patch('roles/update', [RoleController::class, 'updateRole']);
             Route::post('roles/create', [RoleController::class, 'createRole']);
-            Route::delete('roles/delete', [RoleController::class, 'deleteRoles']);
+            Route::delete('roles/delete/{id}', [RoleController::class, 'deleteRoles']);
             Route::get('roles/export', [RoleController::class, 'exportRoles']);
             Route::post('roles/import', [RoleController::class, 'importRoles']);
         });
