@@ -8569,7 +8569,7 @@ class ApiController extends AdminController
             $query->whereDate('ngay_xuat', date('Y-m-d', strtotime($request->ngay_xuat)));
         }
         $input = $request->all();
-        unset($input['created_by'], $input['page'], $input['pageSize'], $input['xuong_giao'], $input['ngay_xuat'], $input['sl_ton_min'], $input['sl_ton_max']);
+        unset($input['created_by'], $input['page'], $input['pageSize'], $input['xuong_giao'], $input['ngay_xuat'], $input['sl_ton_min'], $input['sl_ton_max'], $input['_t']);
         $input = array_filter($input);
         $order_test = [];
         if (count($input) > 0) {
