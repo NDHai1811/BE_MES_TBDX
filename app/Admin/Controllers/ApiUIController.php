@@ -470,11 +470,7 @@ class ApiUIController extends AdminController
 
     public function produceHistory(Request $request)
     {
-        $query = InfoCongDoan::where("type", "sx");
-        $line = Line::find($request->line_id);
-        if ($line) {
-            $query->where('line_id', $line->id);
-        }
+        $query = InfoCongDoan::query();
         if (isset($request->date) && count($request->date)) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
                 ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));

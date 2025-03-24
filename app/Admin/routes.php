@@ -415,9 +415,9 @@ Route::group([
     'as'            => '',
 ], function (Router $router) {
 
-    $router->get('customers', [ApiController::class, 'ui_getCustomers']);
-    $router->get('orders', [ApiController::class, 'ui_getOrders']);
-    $router->get('lo_sx', [ApiController::class, 'ui_getLoSanXuat']);
+    $router->get('customers', [ApiController::class, 'ui_getCustomers']); //Not modified
+    $router->get('orders', [ApiController::class, 'ui_getOrders']); //Added pagination
+    $router->get('lo_sx', [ApiController::class, 'ui_getLoSanXuat']); //Wrong Model name?
 
     $router->get('machine/list', [ApiController::class, 'listMachineUI']);
     $router->get('manufacture/line', [ApiController::class, 'lineList']);
