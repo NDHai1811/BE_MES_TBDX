@@ -217,9 +217,26 @@ class RoleController extends AdminController
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
         $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $writer->save('exported_files/Phân quyền.xlsx');
-        $href = '/exported_files/Phân quyền.xlsx';
-        return $this->success($href);
+
+        $exportPath = 'exported_files/';
+        //Create directory if it does not exist
+        if (!file_exists($exportPath)) {
+            mkdir($exportPath, 0777, true);
+        }
+
+        $filePath = $exportPath . 'Phân quyền.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save($filePath);
+        $base64Data = base64_encode(file_get_contents($filePath));
+        //Return response following the format of downloadExcel() in FE
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'data' => $base64Data,
+                'type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'file' => 'Phân quyền.xlsx'
+            ]
+        ]);
     }
 
     public function importRoles(Request $request){
