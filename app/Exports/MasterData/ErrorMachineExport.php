@@ -46,10 +46,10 @@ class ErrorMachineExport implements FromCollection, WithHeadings, WithMapping, W
         return [
             $this->rowNumber,
             $record->id,
-            $record->name,
+            $record->ten_su_co,
             $record->line->name ?? null,
-            $record->reason,
-            $record->behavior,
+            $record->nguyen_nhan,
+            $record->cach_xu_ly,
         ];
     }
 

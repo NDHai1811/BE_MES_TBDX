@@ -37,7 +37,7 @@ class ErrorMachineImport implements ToCollection, WithHeadingRow, WithStartRow
 
     protected function importRow(array $row)
     {
-        if (!$row['id'] || !$row['name'] || !$row['line_name']) {
+        if (!$row['id'] || !$row['ten_su_co'] || !$row['line_name']) {
             return; // Bỏ qua hàng nếu tên thiết bị không tồn tại
             // Log::debug($row);
         }
@@ -53,10 +53,10 @@ class ErrorMachineImport implements ToCollection, WithHeadingRow, WithStartRow
         $machine = ErrorMachine::updateOrCreate([
             'id' => $row['id'],
         ], [
-            'name' => $row['name'],
+            'ten_su_co' => $row['ten_su_co'],
             'line_id' => $lineId,
-            'reason' => $row['reason'] ?? null,
-            'behavior' => $row['behavior'] ?? null,
+            'nguyen_nhan' => $row['nguyen_nhan'] ?? null,
+            'cach_xu_ly' => $row['cach_xu_ly'] ?? null,
         ]);
     }
 }
