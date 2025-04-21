@@ -30,9 +30,9 @@ class CustomerController extends AdminController
     {
         Route::controller(self::class)->group(function () {
             Route::get('customer/list', [CustomerController::class, 'getCustomerByShortName']);
-            Route::patch('customer/update', [CustomerController::class, 'updateCustomer']);
+            Route::patch('customer/update/{id}', [CustomerController::class, 'updateCustomer']);
             Route::post('customer/create', [CustomerController::class, 'createCustomer']);
-            Route::delete('customer/delete', [CustomerController::class, 'deleteCustomer']);
+            Route::delete('customer/delete/{id}', [CustomerController::class, 'deleteCustomer']);
             Route::get('customer/export', [CustomerController::class, 'exportCustomer']);
             Route::post('customer/import', [CustomerController::class, 'importCustomer']);
             Route::get('real-customer-list', [CustomerController::class,'getCustomers']);
@@ -80,22 +80,27 @@ class CustomerController extends AdminController
         return $this->success(['data'=>$customers, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
 
-    public function updateCustomer(Request $request)
+    public function updateCustomer(Request $request, $id)
     {
-        try {
-            DB::beginTransaction();
-            $input = $request->all();
-            $customer = Customer::updateOrCreate(['id'=>$input['customer_id']], ['id'=>$input['customer_id'], 'name'=>$input['name']]);
-            if ($customer) {
-                $short_name = CustomerShort::updateOrCreate(['customer_id'=>$customer->id], ['short_name'=>$input['short_name']]);
-            }
-            DB::commit();
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            ErrorLog::saveError($request, $th);
+        $input = $request->all();
+        $validated = CustomerShort::validate($input, $id);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
+        $customer_short = CustomerShort::find($id);
+        $customer = Customer::find($customer_short->customer_id);
+
+        $new_customer_name = $request->name ?? null;
+        $new_customer_short_name = $request->short_name ?? null;
+        if ($customer && $customer_short) {
+            $customer->name = $new_customer_name;
+            $customer->save();
+            $customer_short->short_name = $new_customer_short_name;
+            $customer_short->save();
+        } else {
             return $this->failure('', 'Đã xảy ra lỗi');
         }
-        return $this->success($customer, 'Cập nhật thành công');
+        return $this->success([$customer_short, $customer], 'Cập nhật thành công');
     }
 
     public function createCustomer(Request $request)
