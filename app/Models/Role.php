@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Validator;
 class Role extends Model
 {
     use HasFactory;
-    protected $table = 'admin_roles';
+    protected $table = 'roles';
     protected $fillable = ['id', 'name', 'slug', 'parent_id', 'machine_id'];
 
     public function permissions(){
@@ -38,7 +38,7 @@ class Role extends Model
         $validated = Validator::make(
             $input,
             [
-                'name' => $is_update ? 'required' : 'required|unique:admin_roles',
+                'name' => $is_update ? 'required' : 'required|unique:roles',
                 'parent_id' => 'different:id',
             ],
             [

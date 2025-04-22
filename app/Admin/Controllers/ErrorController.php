@@ -28,7 +28,7 @@ class ErrorController extends AdminController
     {
         Route::controller(self::class)->group(function () {
             Route::get('errors/list', [ErrorController::class, 'getErrors']);
-            Route::patch('errors/update', [ErrorController::class, 'updateErrors']);
+            Route::patch('errors/update/', [ErrorController::class, 'updateErrors']);
             Route::post('errors/create', [ErrorController::class, 'createErrors']);
             Route::delete('errors/delete', [ErrorController::class, 'deleteErrors']);
             Route::get('errors/export', [ErrorController::class, 'exportErrors']);
@@ -62,7 +62,7 @@ class ErrorController extends AdminController
         }
 
         $input = $request->all();
-        $validated = Error::validateUpdate($input);
+        $validated = Error::validate($input, $input['id']);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
@@ -84,7 +84,7 @@ class ErrorController extends AdminController
         }
 
         $input = $request->all();
-        $validated = Error::validateUpdate($input, false);
+        $validated = Error::validate($input, false);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
