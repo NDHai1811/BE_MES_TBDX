@@ -121,18 +121,19 @@ class CustomerController extends AdminController
         return $this->success($customer, 'Tạo thành công');
     }
 
-    public function deleteCustomer(Request $request)
+    public function deleteCustomer($id)
     {
-        $input = $request->all();
-        try {
-            DB::beginTransaction();
-            $input = $request->all();
-            CustomerShort::whereIn('id', $input)->delete();
-            DB::commit();
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+        $customer_short = CustomerShort::find($id);
+        $customer_id = $customer_short->customer_id;
+        $list_customer_short = CustomerShort::all()->where('customer_id', $customer_id);
+        if (!$customer_short) {
+            return $this->failure('', 'Không tìm thấy');
+        } else if (sizeof($list_customer_short) > 1) {
+            $customer_short->delete();
+        } else {
+            $customer_short->delete();
+            $customer = Customer::find($customer_id);
+            $customer->delete();
         }
         return $this->success('Xoá thành công');
     }
