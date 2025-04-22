@@ -241,7 +241,7 @@ class VehicleController extends AdminController
 
     public function importVehicles(Request $request)
     {
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
         } elseif ($extension == 'xlsx') {
@@ -250,12 +250,12 @@ class VehicleController extends AdminController
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
         }
         // file path
-        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $vehicle = [];
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 4
-            if ($key > 2) {
+            if ($key > 4) {
                 $input = [];
                 $input['id'] = $row['B'];
                 $input['weight'] = $row['C'];
