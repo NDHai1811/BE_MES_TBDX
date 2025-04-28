@@ -20,7 +20,8 @@ use App\Traits\API;
 use App\Models\Line;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use stdClass;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 
 class LayoutController extends AdminController
 {
@@ -33,6 +34,7 @@ class LayoutController extends AdminController
             Route::post('layouts/create', [ApiController::class, 'createLayouts']);
             Route::patch('layouts/update', [ApiController::class, 'updateLayouts']);
             Route::delete('layouts/delete', [ApiController::class, 'deleteLayouts']);
+            Route::get('layouts/print', [LayoutController::class, 'printLayout']);
         });
     }
 
@@ -95,5 +97,62 @@ class LayoutController extends AdminController
             return $this->failure('', 'Đã xảy ra lỗi');
         }
         return $this->success([], 'Xóa thành công');
+    }
+
+    public function printLayout(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+        ]);
+        $content = '<table class="label-print" style="border-collapse: collapse; width: 100%; border-style: hidden;" border="1">
+                    <tbody>
+                    <tr style="border-style: hidden;">
+                    <td style="width: 99.5316%; border-style: hidden; text-align: center;">[qrcode]</td>
+                    </tr>
+                    <tr style="border-style: hidden;">
+                    <td style="width: 99.5316%; border-style: hidden; text-align: center;"><strong style="word-break: break-all;">[id]</strong></td>
+                    </tr>
+                    </tbody>
+                    </table>';
+        $result = '';
+        $arr = [];
+        if (empty($request->ids)) return $this->success([], 'Dữ liệu trống');
+        if (count($request->ids) > 0) {
+            $result = '<div style="display: flex; flex-direction: column">';
+        }
+        foreach ($request->ids as $key => $id) {
+            $record = Layout::find($id);
+            if (empty($record)) continue;
+            $qrCode = new QrCode($record->id);
+            $writer = new PngWriter();
+            $qr_result = $writer->write($qrCode);
+            $qrCodeBase64 = base64_encode($qr_result->getString());
+            $qrCodeHtml = '<img style="width:95%" src="data:image/png;base64,' . $qrCodeBase64 . '" alt="qrcode" />';
+
+            // Replace
+            $html = $content;
+            $html = str_replace(
+                ['[qrcode]', '[id]'],
+                [$qrCodeHtml, $record->layout_id],
+                $html
+            );
+            $arr[] = $html;
+            if ($key < count($request->ids) - 1) {
+                $html .= '<div style="page-break-after: always;"></div>';
+            }
+            $result .= $html;
+        }
+
+        
+        if (empty($result)) return $this->success([], 'Dữ liệu trống');
+        
+        if (count($request->ids) > 0) {
+            $result .= '</div>';
+        }
+        return $this->success([
+            'html' => $result,
+            'width' => $template->width ?? 100,
+            'height' => $template->height ?? 100,
+        ]);
     }
 }

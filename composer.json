@@ -9,6 +9,7 @@
         "alhimik1986/php-excel-templator": "^1.0",
         "awobaz/compoships": "^2.2",
         "encore/laravel-admin": "^1.8",
+        "endroid/qr-code": "^4.8",
         "fruitcake/laravel-cors": "^2.0",
         "guzzlehttp/guzzle": "^7.0.1",
         "kaxiluo/php-excel-template": "^1.1",
