@@ -72,7 +72,7 @@ class KhuonController extends AdminController
         $input = $request->all();
         $khuon = KhuonLink::where('id', $id)->first();
         if ($khuon) {
-            $validated = KhuonLink::validateUpdate($input);
+            $validated = KhuonLink::validate($input, true);
             if ($validated->fails()) {
                 return $this->failure('', $validated->errors()->first());
             }
@@ -92,7 +92,7 @@ class KhuonController extends AdminController
         try {
             DB::beginTransaction();
             $input = $request->all();
-            $validated = KhuonLink::validateUpdate($input, false);
+            $validated = KhuonLink::validate($input);
             if ($validated->fails()) {
                 return $this->failure('', $validated->errors()->first());
             }

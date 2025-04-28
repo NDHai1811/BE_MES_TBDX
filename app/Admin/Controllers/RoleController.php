@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Exports\MasterData\RoleExport;
 use App\Models\Role;
 use App\Models\Permission;
 use App\Models\RolePermission;
@@ -9,8 +10,11 @@ use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
 use Encore\Admin\Show;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
@@ -26,9 +30,9 @@ class RoleController extends AdminController
             Route::get('roles/tree', [RoleController::class, 'getRoles']);
             Route::get('roles/list', [RoleController::class, 'getRolesList']);
             Route::get('roles/permissions', [RoleController::class, 'getPermissions']);
-            Route::patch('roles/update', [RoleController::class, 'updateRole']);
+            Route::patch('roles/update/{id}', [RoleController::class, 'updateRole']);
             Route::post('roles/create', [RoleController::class, 'createRole']);
-            Route::delete('roles/delete', [RoleController::class, 'deleteRoles']);
+            Route::delete('roles/delete/{id}', [RoleController::class, 'deleteRoles']);
             Route::get('roles/export', [RoleController::class, 'exportRoles']);
             Route::post('roles/import', [RoleController::class, 'importRoles']);
         });
@@ -41,6 +45,18 @@ class RoleController extends AdminController
         }
         $roles = $this->buildTree($query->get());
         return $this->success($roles);
+    }
+
+    function queryRole($request)
+    {
+        $query = Role::with('permissions')->orderBy('created_at');
+        if (isset($request->id)) {
+            $query->where('id', 'like', "%$request->id%");
+        }
+        if (isset($request->name)) {
+            $query->where('name', 'like', "%$request->name%");
+        }
+        return $query;
     }
 
     public function getRolesList(Request $request){
@@ -82,13 +98,14 @@ class RoleController extends AdminController
         return $this->success($permissions);
     }
 
-    public function updateRole(Request $request){
+    public function updateRole(Request $request, $id){
         $input = $request->all();
+
         $validated = Role::validateUpdate($input, true);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
-        $role = Role::where('id', $input['id'])->first();
+        $role = Role::find($id);
         if($role){
             $input['slug'] = Str::slug($input['name']);
             $update = $role->update($input);
@@ -119,122 +136,162 @@ class RoleController extends AdminController
         return $this->success($role, 'Tạo thành công');
     }
 
-    public function deleteRoles(Request $request){
-        $input = $request->all();
-        Role::whereIn('id', $input)->delete();
-        DB::table('admin_role_permissions')->whereIn('role_id', $input)->delete();
+    public function deleteRoles($id){
+        $role = Role::find($id);
+        if (!$role) {
+            return $this->failure([], 'Không tìm thấy role với ID được cung cấp', 404);
+        }
+        $role->delete();
+        DB::table('role_permissions')->where('role_id', $id)->delete();
         return $this->success('Xoá thành công');
     }
 
     public function exportRoles(Request $request){
-        $query = Role::with('permissions')->orderBy('created_at');
-        if(isset($request->name)){
-            $query->where('name', 'like', "%$request->name%");
-        }
-        $roles = $query->get();
-        foreach( $roles as $role ){
-            $quyen = [];
-            foreach($role->permissions as $permission){
-                $quyen[] = $permission->name;
-            }
-            $role->quyen = implode(", ", $quyen);
-        }
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $start_row = 2;
-        $start_col = 1;
-        $centerStyle = [
-            'alignment' => [
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-                'wrapText' => true
-            ],
-            'borders' => array(
-                'outline' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
-        $headerStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => array('argb' => 'BFBFBF')
-            ]
+//        $query = Role::with('permissions')->orderBy('created_at');
+////        return $query;
+//        if(isset($request->name)){
+//            $query->where('name', 'like', "%$request->name%");
+//        }
+//        $roles = $query->get();
+////        return $roles;
+//        foreach( $roles as $role ){
+//            $quyen = [];
+//            foreach($role->permissions as $permission){
+//                $quyen[] = $permission->name;
+//            }
+//            $role->quyen = implode(", ", $quyen);
+//        }
+//        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+//        $sheet = $spreadsheet->getActiveSheet();
+//        $start_row = 2;
+//        $start_col = 1;
+//        $centerStyle = [
+//            'alignment' => [
+//                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+//                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+//                'wrapText' => true
+//            ],
+//            'borders' => array(
+//                'outline' => array(
+//                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+//                    'color' => array('argb' => '000000'),
+//                ),
+//            ),
+//        ];
+//        $headerStyle = array_merge($centerStyle, [
+//            'font' => ['bold' => true],
+//            'fill' => [
+//                'fillType' => Fill::FILL_SOLID,
+//                'startColor' => array('argb' => 'BFBFBF')
+//            ]
+//        ]);
+//        $titleStyle = array_merge($centerStyle, [
+//            'font' => ['size'=>16, 'bold' => true],
+//        ]);
+//        $border = [
+//            'borders' => array(
+//                'allBorders' => array(
+//                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+//                    'color' => array('argb' => '000000'),
+//                ),
+//            ),
+//        ];
+//        $header = ['Tên quyền', 'Chức năng'];
+//        $table_key = [
+//            'A'=>'name',
+//            'B'=>'quyen',
+//        ];
+//        foreach($header as $key => $cell){
+//            if(!is_array($cell)){
+//                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
+//            }
+//            $start_col+=1;
+//        }
+//        $sheet->setCellValue([1, 1], 'Quản lý phân quyền')->mergeCells([1, 1, $start_col-1, 1])->getStyle([1, 1, $start_col-1, 1])->applyFromArray($titleStyle);
+//        $sheet->getRowDimension(1)->setRowHeight(40);
+//        $table_col = 1;
+//        $table_row = $start_row+1;
+//        foreach($roles->toArray() as $key => $row){
+//            $table_col = 1;
+//            $row = (array)$row;
+//            foreach($table_key as $k=>$value){
+//                if(isset($row[$value])){
+//                    $sheet->setCellValue($k.$table_row,$row[$value])->getStyle($k.$table_row)->applyFromArray($centerStyle);
+//                }else{
+//                    continue;
+//                }
+//                $table_col+=1;
+//            }
+//            $table_row+=1;
+//        }
+//        foreach ($sheet->getColumnIterator() as $column) {
+//            if ($column->getColumnIndex() === 'B') {
+//                $sheet->getColumnDimension($column->getColumnIndex())->setWidth(50);
+//            } else {
+//                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+//            }
+//            $sheet->getStyle($column->getColumnIndex().($start_row).':'.$column->getColumnIndex().($table_row-1))->applyFromArray($border);
+//        }
+//        header("Content-Description: File Transfer");
+//        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+//        header('Content-Disposition: attachment;filename="Phân quyền.xlsx"');
+//        header('Cache-Control: max-age=0');
+//        header("Content-Transfer-Encoding: binary");
+//        header('Expires: 0');
+//        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+//        $writer->save('../app/excel/export/Phân quyền.xlsx');
+//        $href = '/export/Phân quyền.xlsx';
+//
+//        return $this->success($href);
+
+
+//        //viet dua tren export excel machine
+        $file = "Phân quyền.xlsx";
+        $filePath = "export/$file";
+        $data = $this->queryRole($request)->get();
+        $result = Excel::store(new RoleExport($data), $filePath, 'excel');
+
+        if (empty($result))
+            return $this->failure([], 'THAO TÁC THẤT BẠI', 500);
+        # Generate file base64
+        $fileContent = Storage::disk('excel')->get($filePath);
+        $fileType = File::mimeType(storage_path("app/excel/$filePath"));
+        $base64 = base64_encode($fileContent);
+        $fileBase64Uri = "data:$fileType;base64,$base64";
+
+        # Delete if needed
+        Storage::disk('excel')->delete($filePath);
+
+        # Return
+        return $this->success([
+            'file' => $file,
+            'type' => $fileType,
+            'data' => $fileBase64Uri,
         ]);
-        $titleStyle = array_merge($centerStyle, [
-            'font' => ['size'=>16, 'bold' => true],
-        ]);
-        $border = [
-            'borders' => array(
-                'allBorders' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
-        $header = ['Tên quyền', 'Chức năng'];
-        $table_key = [
-            'A'=>'name',
-            'B'=>'quyen',
-        ];
-        foreach($header as $key => $cell){
-            if(!is_array($cell)){
-                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
-            }
-            $start_col+=1;
-        }
-        $sheet->setCellValue([1, 1], 'Quản lý phân quyền')->mergeCells([1, 1, $start_col-1, 1])->getStyle([1, 1, $start_col-1, 1])->applyFromArray($titleStyle);
-        $sheet->getRowDimension(1)->setRowHeight(40);
-        $table_col = 1;
-        $table_row = $start_row+1;
-        foreach($roles->toArray() as $key => $row){
-            $table_col = 1;
-            $row = (array)$row;
-            foreach($table_key as $k=>$value){
-                if(isset($row[$value])){
-                    $sheet->setCellValue($k.$table_row,$row[$value])->getStyle($k.$table_row)->applyFromArray($centerStyle);
-                }else{
-                    continue;
-                }
-                $table_col+=1;
-            }
-            $table_row+=1;
-        }
-        foreach ($sheet->getColumnIterator() as $column) {
-            if ($column->getColumnIndex() === 'B') {
-                $sheet->getColumnDimension($column->getColumnIndex())->setWidth(50);
-            } else {
-                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            }
-            $sheet->getStyle($column->getColumnIndex().($start_row).':'.$column->getColumnIndex().($table_row-1))->applyFromArray($border);
-        }
-        header("Content-Description: File Transfer");
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Phân quyền.xlsx"');
-        header('Cache-Control: max-age=0');
-        header("Content-Transfer-Encoding: binary");
-        header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $writer->save('exported_files/Phân quyền.xlsx');
-        $href = '/exported_files/Phân quyền.xlsx';
-        return $this->success($href);
     }
 
     public function importRoles(Request $request){
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
-        if ($extension == 'csv') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
-        } elseif ($extension == 'xlsx') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-        } else {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
-        }
+        $request->validate([
+            'file' => 'required|mimes:xlsx',
+        ]);
+//        return $request->file('file')->getRealPath();
+//        $extension = pathinfo($request->file('file'), PATHINFO_EXTENSION);
+//        return $extension;
+//        return $request->file('file');
+//        if ($extension == 'csv') {
+//            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+//        } elseif ($extension == 'xlsx') {
+//            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+//        } else {
+//            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+//        }
+        $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
         // file path
-        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+//        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $spreadsheet = $reader->load($request->file('file'));
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $data = [];
+//        return $allDataInSheet;
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 2
             if ($key > 2) {
@@ -248,6 +305,7 @@ class RoleController extends AdminController
                 $data[] = $input;
             }
         }
+        return $data;
         foreach ($data as $key => $input) {
             $role = Role::where('name', 'like', $input['name'])->first();
             if($role) {

@@ -2,7 +2,6 @@
 
 namespace App\Imports;
 
-use App\Models\ErrorMachine;
 use App\Models\Machine;
 use App\Models\Line;
 use Illuminate\Support\Str;
@@ -12,7 +11,7 @@ use Maatwebsite\Excel\Concerns\WithStartRow;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
-class ErrorMachineImport implements ToCollection, WithHeadingRow, WithStartRow
+class RoleImport implements ToCollection, WithHeadingRow, WithStartRow
 {
     protected $fields;
 
@@ -37,26 +36,29 @@ class ErrorMachineImport implements ToCollection, WithHeadingRow, WithStartRow
 
     protected function importRow(array $row)
     {
-        if (!$row['id'] || !$row['ten_su_co'] || !$row['line_name']) {
+        if (!$row['id'] || !$row['name'] || !$row['line_name']) {
             return; // Bỏ qua hàng nếu tên thiết bị không tồn tại
             // Log::debug($row);
         }
+//
+//        $line = Line::where(['name' => $row['line_name']])->first();
+//        if(!$line){
+//            throw new \Exception('Không tìm thấy công đoạn: ' . $row['line_name']);
+//        }
+//
+//        $lineId = $line->id;
+//
+//        // Tạo Machine
+//        $machine = Machine::updateOrCreate([
+//            'id' => $row['id'],
+//        ], [
+//            'machine_name' => $row['name'],
+//            'line_id' => $lineId,
+//            'kieu_loai' => $row['kieu_loai'] ?? null,
+//            'device_id' => $row['device_id'] ?? null,
+//            'is_iot' => $row['is_iot'] == 'Có' ? 1 : 0,
+//        ]);
 
-        $line = Line::where(['name' => $row['line_name']])->first();
-        if(!$line){
-            throw new \Exception('Không tìm thấy công đoạn: ' . $row['line_name']);
-        }
 
-        $lineId = $line->id;
-
-        // Tạo Error Machine
-        $machine = ErrorMachine::updateOrCreate([
-            'id' => $row['id'],
-        ], [
-            'ten_su_co' => $row['ten_su_co'],
-            'line_id' => $lineId,
-            'nguyen_nhan' => $row['nguyen_nhan'] ?? null,
-            'cach_xu_ly' => $row['cach_xu_ly'] ?? null,
-        ]);
     }
 }

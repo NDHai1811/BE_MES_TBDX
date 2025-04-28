@@ -2,14 +2,16 @@
 
 namespace App\Exports\MasterData;
 
-use App\Models\ErrorMachine;
+use App\Helpers\Utilities;
+use App\Models\Equipment;
+use App\Models\Machine;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ErrorMachineExport implements FromCollection, WithHeadings, WithMapping, WithStyles
+class RoleExport implements FromCollection, WithHeadings, WithMapping, WithStyles
 {
     private $rowNumber = 0;
 
@@ -25,31 +27,26 @@ class ErrorMachineExport implements FromCollection, WithHeadings, WithMapping, W
     */
     public function collection()
     {
-        return $this->data;
+        return $this->data; // Dữ liệu xuất ra file
     }
 
     public function headings(): array
     {
         return [
             'STT',
-            'Mã lỗi',
-            'Tên lỗi',
-            'Công đoạn',
-            'Nguyên nhân',
-            'Cách xử lý',
+            'Tên quyền',
+            'Chức năng',
         ];
     }
 
     public function map($record): array
     {
         $this->rowNumber++;
+        $permissionNames = collect($record->permissions)->pluck('name')->implode(', ');
         return [
             $this->rowNumber,
-            $record->id,
-            $record->ten_su_co,
-            $record->line->name ?? null,
-            $record->nguyen_nhan,
-            $record->cach_xu_ly,
+            $record->name,
+            $permissionNames,
         ];
     }
 
@@ -82,5 +79,6 @@ class ErrorMachineExport implements FromCollection, WithHeadings, WithMapping, W
                 ],
             ],
         ]);
+        $sheet->getStyle('C')->getAlignment()->setWrapText(true);
     }
 }
