@@ -2616,7 +2616,6 @@ class ApiController extends AdminController
     public function productionPlan(Request $request)
     {
         $query = ProductionPlan::with('order', 'machine.line', 'orders', 'creator:id,name')->orderBy('thu_tu_uu_tien')->orderBy('updated_at', 'DESC');
-        return $query->get();
         if (isset($request->end_date) && isset($request->start_date)) {
             $query->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
                 ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)));
@@ -2624,8 +2623,8 @@ class ApiController extends AdminController
             $query->whereDate('ngay_sx', '>=', date('Y-m-d'))
                 ->whereDate('ngay_sx', '<=', date('Y-m-d'));
         }
-        if (isset($request->machine)) {
-            $query->whereIn('machine_id', $request->machine);
+        if (isset($request->machine_id)) {
+            $query->whereIn('machine_id', $request->machine_id);
         }
         if (isset($request->lo_sx)) {
             $query->where('lo_sx', 'like', "%$request->lo_sx%");
@@ -2671,7 +2670,7 @@ class ApiController extends AdminController
             $data[$key]['so_dao'] = $data[$key]['so_ra'] ? ceil($data[$key]['sl_kh'] * ($formula->he_so ?? 1) / $data[$key]['so_ra']) : $data[$key]['so_dao'];
             $data[$key]['id'] = $value->id;
         }
-        return $this->success($data);
+        return $this->success(['data' => $data]);
     }
 
     public function produceOverall(Request $request)
