@@ -7283,7 +7283,7 @@ class ApiController extends AdminController
 
     public function importKHSX(Request $request)
     {
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
         } elseif ($extension == 'xlsx') {
@@ -7292,7 +7292,7 @@ class ApiController extends AdminController
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
         }
         // file path
-        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $plans = [];
         $lsx_array = [];

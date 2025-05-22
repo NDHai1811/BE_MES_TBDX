@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 use App\Models\Cell;
 use App\Models\CellProduct;
 use App\Models\Customer;
-use App\Models\User;
 use App\Models\Error;
 use App\Models\ErrorLog;
 use App\Models\GroupPlanOrder;
