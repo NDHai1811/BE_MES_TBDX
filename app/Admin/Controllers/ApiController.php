@@ -78,6 +78,8 @@ use App\Events\ProductionUpdated;
 use App\Models\InfoCongDoanPriority;
 use App\Models\ShiftAssignment;
 use App\Models\Supplier;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
@@ -2666,11 +2668,160 @@ class ApiController extends AdminController
             $obj->mql = $value->orders ? implode(',', $value->orders->pluck('mql')->toArray()) : '';
             $value->qr_code = json_encode($obj);
             $data[$key] = array_merge($value->toArray(), $order ? $order->toArray() : []);
-            $data[$key]['mql'] = $value->orders ? implode(',', $value->orders->pluck('mql')->toArray()) : '';
+            $data[$key]['mql'] = $obj->mql;
             $data[$key]['so_dao'] = $data[$key]['so_ra'] ? ceil($data[$key]['sl_kh'] * ($formula->he_so ?? 1) / $data[$key]['so_ra']) : $data[$key]['so_dao'];
             $data[$key]['id'] = $value->id;
         }
         return $this->success(['data' => $data]);
+    }
+
+    public function printSongPlan(Request $request)
+    {
+        $content = '<table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:Arial,sans-serif;">
+            <tr style="height:150px;">
+                <td colspan="5" style="border:1px solid #000; padding:0;">
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                        <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:110px;">
+                            <div style="width:140px; height:140px; display:flex; align-items:center; justify-content:center;">[qrcode]</div>
+                        </div>
+                        <div style="flex:2; text-align:center;">
+                            <div style="font-size:32px; font-weight:bold; margin-bottom:4px;">TEM GIẤY TẤM</div>
+                        </div>
+                        <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:110px;">
+                            <img src="[logo]" style="width:110px; height:110px; object-fit:contain;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr style="height:50px;">
+                <td colspan="2" style="border:1px solid #000; font-size:18px; text-align:center;">KHÁCH HÀNG</td>
+                <td colspan="2" style="border:1px solid #000; font-size:18px; text-align:center;">ĐƠN HÀNG</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">LÔ SX</td>
+            </tr>
+            <tr style="height:80px;">
+                <td colspan="2" style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle; height:48px;">[customer]</td>
+                <td colspan="2" style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle;">[mdh]</td>
+                <td style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle;">[lot]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">DÀI</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">RỘNG</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">CAO</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">LOT</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ LƯỢNG</td>
+            </tr>
+            <tr style="height:80px;">
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[length]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[width]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[height]</td>
+                <td style="border:1px solid #000; font-size:18px; font-weight:500; text-align:center;">[lot_code]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[quantity]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">KHỔ</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">DÀI</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ DAO</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">XẢ</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ LỚP</td>
+            </tr>
+            <tr style="height:80px;">
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[kho]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[dai]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_dao]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[xa]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_lop]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td colspan="4" style="border:1px solid #000; font-size:18px; text-align:left; padding-left:8px;">GHI CHÚ SÓNG</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ PALLET</td>
+            </tr>
+            <tr style="height:80px;">
+                <td colspan="4" style="border:1px solid #000; font-size:18px; font-weight:bold; text-align:left; padding-left:8px;">[ghi_chu_song]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_pallet]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td colspan="4" style="border:1px solid #000; font-size:18px; text-align:left; padding-left:8px;">GHI CHÚ TBDX</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">ĐỢT</td>
+            </tr>
+            <tr style="height:80px;">
+                <td colspan="4" style="border:1px solid #000; font-size:18px; font-weight:bold; text-align:left; padding-left:8px;">[ghi_chu_tbdx]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[dot]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">NGÀY SX</td>
+                <td colspan="2" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[ngay_sx]</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">CA SX</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[ca_sx]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">MQL ĐÃ CHẠY</td>
+                <td colspan="4" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[mql_da_chay]</td>
+            </tr>
+        </table>';
+        $result = '';
+        $arr = [];
+        if (empty($request->ids)) return $this->failure([], 'Dữ liệu trống');
+        if (count($request->ids) > 0) {
+            $result = '<div style="display: flex; flex-direction: column">';
+        }
+        foreach ($request->ids as $key => $id) {
+            $record = ProductionPlan::find($id);
+            if (!$record) continue;
+            $obj = new stdClass();
+            $obj->lo_sx = $record->lo_sx;
+            $obj->so_luong = $record->sl_kh;
+            $obj->mql = $record->orders ? implode(',', $record->orders->pluck('mql')->toArray()) : '';
+            $record->qr_code = json_encode($obj);
+            $qrCode = new QrCode($record->qr_code);
+            $writer = new PngWriter();
+            $qr_result = $writer->write($qrCode);
+            $qrCodeBase64 = base64_encode($qr_result->getString());
+            $qrImg = '<img src="data:image/png;base64,' . $qrCodeBase64 . '" style="width:100%;">';
+
+            // thay placeholder
+            $html = strtr($content, [
+                '[qrcode]'        => $qrImg,
+                '[logo]'          => asset('company_config/logo.png'),
+                '[customer]'      => e($record->order->short_name ?? ""),
+                '[mdh]'           => e($record->order->mdh ?? ""),
+                '[lot]'           => e($record->lo_sx),
+                '[length]'        => e($record->order->length ?? ''),
+                '[width]'         => e($record->order->width ?? ''),
+                '[height]'        => e($record->order->height ?? ''),
+                '[lot_code]'      => e($record->lo_sx),
+                '[quantity]'      => e($record->sl_kh),
+                '[kho]'           => e($record->order->kho ?? ''),
+                '[dai]'           => e($record->order->dai ?? ''),
+                '[so_dao]'        => e($record->order->so_dao ?? ''),
+                '[xa]'            => e($record->order->so_ra ?? ''),
+                '[so_lop]'        => e($record->order->buyer->so_lop ?? ''),
+                '[ghi_chu_song]'  => e($record->order->note_3 ?? ''),
+                '[so_pallet]'     => e($record->ordering),
+                '[ghi_chu_tbdx]'  => e($record->order->note_2 ?? ''),
+                '[ngay_sx]'       => Carbon::parse($record->thoi_gian_bat_dau)->format('d/m/Y H:i:s'),
+                '[ca_sx]'         => e($record->ca_sx),
+                '[mql_da_chay]'   => e($obj->mql),
+                '[dot]'           => e($record->order->dot ?? ''),
+            ]);
+
+
+            if ($key < count($request->ids) - 1) {
+                $html .= '<div style="page-break-after:always;"></div>';
+            }
+            $result .= $html;
+        }
+
+
+        if (empty($result)) return $this->failure([], 'Dữ liệu trống');
+
+        if (count($request->ids) > 0) {
+            $result .= '</div>';
+        }
+        return $this->success([
+            'html' => $result,
+            'width' => $template->width ?? 100,
+            'height' => $template->height ?? 100,
+        ]);
     }
 
     public function produceOverall(Request $request)
