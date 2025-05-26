@@ -137,5 +137,7 @@ Route::group([
     $router->get('deleteDuplicate', [ApiUIController::class, 'deleteDuplicate']);
     $router->post('capNhatTonKhoTPExcel', [ApiUIController::class, 'capNhatTonKhoTPExcel']);
     $router->get('reorderInfoCongDoan', [ApiController::class, 'reorderInfoCongDoan']);
+
+    $router->get('ui/manufacture/production-plan/print-song', [ApiController::class, 'printSongPlan']);
 });
 

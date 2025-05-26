@@ -78,6 +78,8 @@ use App\Events\ProductionUpdated;
 use App\Models\InfoCongDoanPriority;
 use App\Models\ShiftAssignment;
 use App\Models\Supplier;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
@@ -525,10 +527,10 @@ class ApiController extends AdminController
                     if ($info_lo_sx) {
                         $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
                         $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
-                        if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) {   
+                        if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) {
                             $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
                             $running_infos = InfoCongDoan::where('machine_id', $tracking->machine_id)->where('status', 1)->get();
-                            if(count($running_infos) > 0){
+                            if (count($running_infos) > 0) {
                                 foreach ($running_infos as $info) {
                                     $info->update([
                                         'status' => 2,
@@ -623,10 +625,10 @@ class ApiController extends AdminController
                 DB::rollBack();
                 throw $th;
             }
-        }   
+        }
         $endTime = microtime(true);
         $timeTaken = $endTime - $startTime;
-        return (['machine_id'=>$tracking->machine_id,'timeTaken'=>$timeTaken, 'pre'=>$request['Pre_Counter'], 'set'=>$request['Set_Counter']]);
+        return (['machine_id' => $tracking->machine_id, 'timeTaken' => $timeTaken, 'pre' => $request['Pre_Counter'], 'set' => $request['Set_Counter']]);
     }
 
     protected function broadcastProductionUpdate($info_lo_sx, $so_ra, $reload = false)
@@ -649,7 +651,7 @@ class ApiController extends AdminController
         } else {
             //Tìm lô đang chạy
             $broadcast = [];
-            if($info_cong_doan_in){
+            if ($info_cong_doan_in) {
                 $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
                 if ($next_batch) {
                     if (($request['Pre_Counter'] - $tracking->pre_counter)  >= $info_cong_doan_in->dinh_muc) {
@@ -700,7 +702,7 @@ class ApiController extends AdminController
                         $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
                         $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
                     }
-                } 
+                }
             } else {
                 $tracking->update([
                     'lo_sx' => null,
@@ -713,7 +715,7 @@ class ApiController extends AdminController
                     'status' => 0
                 ]);
             }
-            
+
             broadcast(new ProductionUpdated($broadcast))->toOthers();
             return $broadcast;
         }
@@ -727,7 +729,7 @@ class ApiController extends AdminController
         $info_cong_doan_in = InfoCongDoan::where('machine_id', $machine->id)->where('lo_sx', $tracking->lo_sx)->first();
         //Tìm lô đang chạy
         $broadcast = [];
-        if($info_cong_doan_in){
+        if ($info_cong_doan_in) {
             try {
                 $next_batch = InfoCongDoan::whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
                 if ($next_batch) {
@@ -780,7 +782,7 @@ class ApiController extends AdminController
             } catch (\Throwable $th) {
                 throw $th;
             }
-        }else{
+        } else {
             $tracking->update([
                 'lo_sx' => null,
                 'sl_kh' => 0,
@@ -2666,11 +2668,160 @@ class ApiController extends AdminController
             $obj->mql = $value->orders ? implode(',', $value->orders->pluck('mql')->toArray()) : '';
             $value->qr_code = json_encode($obj);
             $data[$key] = array_merge($value->toArray(), $order ? $order->toArray() : []);
-            $data[$key]['mql'] = $value->orders ? implode(',', $value->orders->pluck('mql')->toArray()) : '';
+            $data[$key]['mql'] = $obj->mql;
             $data[$key]['so_dao'] = $data[$key]['so_ra'] ? ceil($data[$key]['sl_kh'] * ($formula->he_so ?? 1) / $data[$key]['so_ra']) : $data[$key]['so_dao'];
             $data[$key]['id'] = $value->id;
         }
         return $this->success(['data' => $data]);
+    }
+
+    public function printSongPlan(Request $request)
+    {
+        $content = '<table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:Arial,sans-serif;">
+            <tr style="height:150px;">
+                <td colspan="5" style="border:1px solid #000; padding:0;">
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                        <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:110px;">
+                            <div style="width:140px; height:140px; display:flex; align-items:center; justify-content:center;">[qrcode]</div>
+                        </div>
+                        <div style="flex:2; text-align:center;">
+                            <div style="font-size:32px; font-weight:bold; margin-bottom:4px;">TEM GIẤY TẤM</div>
+                        </div>
+                        <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:110px;">
+                            <img src="[logo]" style="width:110px; height:110px; object-fit:contain;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr style="height:50px;">
+                <td colspan="2" style="border:1px solid #000; font-size:18px; text-align:center;">KHÁCH HÀNG</td>
+                <td colspan="2" style="border:1px solid #000; font-size:18px; text-align:center;">ĐƠN HÀNG</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">LÔ SX</td>
+            </tr>
+            <tr style="height:80px;">
+                <td colspan="2" style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle; height:48px;">[customer]</td>
+                <td colspan="2" style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle;">[mdh]</td>
+                <td style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle;">[lot]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">DÀI</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">RỘNG</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">CAO</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">LOT</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ LƯỢNG</td>
+            </tr>
+            <tr style="height:80px;">
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[length]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[width]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[height]</td>
+                <td style="border:1px solid #000; font-size:18px; font-weight:500; text-align:center;">[lot_code]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[quantity]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">KHỔ</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">DÀI</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ DAO</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">XẢ</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ LỚP</td>
+            </tr>
+            <tr style="height:80px;">
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[kho]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[dai]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_dao]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[xa]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_lop]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td colspan="4" style="border:1px solid #000; font-size:18px; text-align:left; padding-left:8px;">GHI CHÚ SÓNG</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ PALLET</td>
+            </tr>
+            <tr style="height:80px;">
+                <td colspan="4" style="border:1px solid #000; font-size:18px; font-weight:bold; text-align:left; padding-left:8px;">[ghi_chu_song]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_pallet]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td colspan="4" style="border:1px solid #000; font-size:18px; text-align:left; padding-left:8px;">GHI CHÚ TBDX</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">ĐỢT</td>
+            </tr>
+            <tr style="height:80px;">
+                <td colspan="4" style="border:1px solid #000; font-size:18px; font-weight:bold; text-align:left; padding-left:8px;">[ghi_chu_tbdx]</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[dot]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">NGÀY SX</td>
+                <td colspan="2" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[ngay_sx]</td>
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">CA SX</td>
+                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[ca_sx]</td>
+            </tr>
+            <tr style="height:50px;">
+                <td style="border:1px solid #000; font-size:18px; text-align:center;">MQL ĐÃ CHẠY</td>
+                <td colspan="4" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[mql_da_chay]</td>
+            </tr>
+        </table>';
+        $result = '';
+        $arr = [];
+        if (empty($request->ids)) return $this->failure([], 'Dữ liệu trống');
+        if (count($request->ids) > 0) {
+            $result = '<div style="display: flex; flex-direction: column">';
+        }
+        foreach ($request->ids as $key => $id) {
+            $record = ProductionPlan::find($id);
+            if (!$record) continue;
+            $obj = new stdClass();
+            $obj->lo_sx = $record->lo_sx;
+            $obj->so_luong = $record->sl_kh;
+            $obj->mql = $record->orders ? implode(',', $record->orders->pluck('mql')->toArray()) : '';
+            $record->qr_code = json_encode($obj);
+            $qrCode = new QrCode($record->qr_code);
+            $writer = new PngWriter();
+            $qr_result = $writer->write($qrCode);
+            $qrCodeBase64 = base64_encode($qr_result->getString());
+            $qrImg = '<img src="data:image/png;base64,' . $qrCodeBase64 . '" style="width:100%;">';
+
+            // thay placeholder
+            $html = strtr($content, [
+                '[qrcode]'        => $qrImg,
+                '[logo]'          => asset('company_config/logo.png'),
+                '[customer]'      => e($record->order->short_name ?? ""),
+                '[mdh]'           => e($record->order->mdh ?? ""),
+                '[lot]'           => e($record->lo_sx),
+                '[length]'        => e($record->order->length ?? ''),
+                '[width]'         => e($record->order->width ?? ''),
+                '[height]'        => e($record->order->height ?? ''),
+                '[lot_code]'      => e($record->lo_sx),
+                '[quantity]'      => e($record->sl_kh),
+                '[kho]'           => e($record->order->kho ?? ''),
+                '[dai]'           => e($record->order->dai ?? ''),
+                '[so_dao]'        => e($record->order->so_dao ?? ''),
+                '[xa]'            => e($record->order->so_ra ?? ''),
+                '[so_lop]'        => e($record->order->buyer->so_lop ?? ''),
+                '[ghi_chu_song]'  => e($record->order->note_3 ?? ''),
+                '[so_pallet]'     => e($record->ordering),
+                '[ghi_chu_tbdx]'  => e($record->order->note_2 ?? ''),
+                '[ngay_sx]'       => Carbon::parse($record->thoi_gian_bat_dau)->format('d/m/Y H:i:s'),
+                '[ca_sx]'         => e($record->ca_sx),
+                '[mql_da_chay]'   => e($obj->mql),
+                '[dot]'           => e($record->order->dot ?? ''),
+            ]);
+
+
+            if ($key < count($request->ids) - 1) {
+                $html .= '<div style="page-break-after:always;"></div>';
+            }
+            $result .= $html;
+        }
+
+
+        if (empty($result)) return $this->failure([], 'Dữ liệu trống');
+
+        if (count($request->ids) > 0) {
+            $result .= '</div>';
+        }
+        return $this->success([
+            'html' => $result,
+            'width' => $template->width ?? 100,
+            'height' => $template->height ?? 100,
+        ]);
     }
 
     public function produceOverall(Request $request)
@@ -5850,8 +6001,7 @@ class ApiController extends AdminController
     {
         $query = Order::orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
         if (isset($request->short_name)) {
-            $customer_short = CustomerShort::where('short_name', $request->short_name)->first();
-            $query->where('customer_id', $customer_short->customer_id);
+            $query->where('short_name', 'like', '%' . $request->short_name . '%');
         }
         if (isset($request->mdh)) {
             if (is_array($request->mdh)) {
@@ -5875,40 +6025,45 @@ class ApiController extends AdminController
         $orders = [];
         switch ($line_id) {
             case Line::LINE_SONG:
+                $plan_song_id = [];
                 if (isset($request->start_date) && isset($request->end_date)) {
+                    $plan_song_id = ProductionPlan::where('machine_id', $machine->id)
+                        ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
+                        ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
+                        ->pluck('id')->toArray();
                     $query->whereDate('han_giao_sx', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('han_giao_sx', '<=', date('Y-m-d', strtotime($request->end_date)));
                 }
-                $group_order = GroupPlanOrder::pluck('order_id')->toArray();
-                $orders_array = array_flip($group_order);
-                $query->whereNotNull(['dai', 'rong']);
-                $orders = $query->with('buyer')->has('buyer')->get()->filter(function ($value) use ($orders_array) {
-                    return !isset($orders_array[$value->id]);
-                });
+                $group_order = GroupPlanOrder::whereIn('plan_id', $plan_song_id)->pluck('order_id')->unique()->toArray();
+                // $orders_array = array_flip($group_order);
+                $query->whereNotIn('id', $group_order)->whereNotNull(['dai', 'rong']);
+                $orders = $query->has('buyer')->with('buyer')->get();
                 break;
             case Line::LINE_XA_LOT:
+                $plan_xa_lot_id = [];
                 if (isset($request->start_date) && isset($request->end_date)) {
+                    $plan_xa_lot_id = ProductionPlan::where('machine_id', $machine->id)
+                        ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
+                        ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
+                        ->pluck('id')->toArray();
                     $query->whereDate('han_giao_sx', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('han_giao_sx', '<=', date('Y-m-d', strtotime($request->end_date)));
                 }
-                $group_order = GroupPlanOrder::pluck('order_id')->toArray();
-                $orders_array = array_flip($group_order);
+                $group_order = GroupPlanOrder::whereIn('plan_id', $plan_xa_lot_id)->pluck('order_id')->unique()->toArray();
+                // $orders_array = array_flip($group_order);
                 $query->whereNotNull(['dai', 'rong']);
-                $orders = $query->with('buyer')->get()->filter(function ($value) use ($orders_array) {
-                    return !isset($orders_array[$value->id]);
-                });
+                $orders = $query->has('buyer')->with('buyer')->get();
                 break;
             default:
-                $plans = ProductionPlan::whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
-                    ->where('machine_id', 'So01')
-                    ->get();
-                $group_order = GroupPlanOrder::whereIn('plan_id', $plans->pluck('id')->toArray())->pluck('order_id')->toArray();
+                $plan_song_id = ProductionPlan::where('machine_id', 'So01')
+                    ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
+                    ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
+                    ->pluck('id')->toArray();
+                $group_order = GroupPlanOrder::whereIn('plan_id', $plan_song_id)->pluck('order_id')->unique()->toArray();
                 $query->whereNotNull(['dai', 'rong'])
                     ->whereIn('id', $group_order)
-                    ->withSum(['plan as sum_sl' => function ($plan_query) use ($line_id) {
-                        $plan_query->where('machine_id', '<>', 'So01')->whereHas('machine', function ($q) use ($line_id) {
-                            $q->where('line_id', $line_id);
-                        });
+                    ->withSum(['plan as sum_sl' => function ($plan_query) use ($machine) {
+                        $plan_query->where('machine_id', $machine->id);
                     }], 'sl_kh');
-                $orders = $query->with('buyer')->get();
+                $orders = $query->has('buyer')->with('buyer')->get();
                 break;
         }
         // $orders = $query->with('buyer')->get();
@@ -5929,6 +6084,9 @@ class ApiController extends AdminController
     public function  handleOrder(Request $request)
     {
         $machine = Machine::find($request->machine_id);
+        if (!$machine) {
+            return $this->failure('', 'Không tìm thấy máy');
+        }
         $line = $machine->line;
         $input = $request->all();
         $date = date('ymd', strtotime($input['start_time']));
@@ -6179,6 +6337,9 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $machine = Machine::find($request->machine_id);
+        if (!$machine) {
+            return $this->failure('', 'Không tìm thấy máy');
+        }
         $line = $machine->line;
         $data = [];
         $start_time = strtotime($input['start_time']);
@@ -6514,7 +6675,7 @@ class ApiController extends AdminController
             }
             DB::commit();
             $this->apiUIController->updateInfoCongDoanPriority();
-            return $this->success('', "Tạo KHSX thành công");
+            return $this->success([], "Tạo KHSX thành công");
         } catch (\Throwable $th) {
             throw $th;
             DB::rollBack();
