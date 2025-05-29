@@ -3371,7 +3371,7 @@ class ApiController extends AdminController
         $query = $this->queryQuality($request);
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
-        $totalPage = $query->count();
+        $totalPage = $query->paginate($request->pageSize ?? null);
         $infos = $query->with("plan", "line", 'tem')->offset($pageSize * $page)->limit($pageSize)->get();
         $data = [];
         foreach ($infos as $key => $info_cong_doan) {
@@ -3394,7 +3394,7 @@ class ApiController extends AdminController
             $obj->mql = $order->mql ?? "";
             $data[] = $obj;
         }
-        return $this->success(['data' => $data, 'totalPage' => $totalPage]);
+        return $this->success(['data' => $data, 'pagination' => QueryHelper::pagination($request, $totalPage)]);
     }
 
     public function iqcHistory(Request $request)
@@ -3425,7 +3425,7 @@ class ApiController extends AdminController
                 $query = $query->where('loai_giay', 'like', '%' . $input['loai_giay'] . '%');
             }
         }
-        $totalPage = $query->count();
+        $totalPage = $query->paginate($request->pageSize ?? null);
         if (isset($request->page) && isset($request->pageSize)) {
             $page = $request->page - 1;
             $pageSize = $request->pageSize;
@@ -3463,7 +3463,7 @@ class ApiController extends AdminController
                 'dataIndex' => $value->id,
             ];
         }
-        return $this->success(['data' => $data, 'totalPage' => $totalPage, 'columns' => $columns]);
+        return $this->success(['data' => $data, 'pagination' => QueryHelper::pagination($request, $totalPage), 'columns' => $columns]);
     }
 
     public function getInfoFromPlan($info) {}
@@ -5838,7 +5838,7 @@ class ApiController extends AdminController
         if (isset($request->page) && isset($request->pageSize)) {
             $page = $request->page - 1;
             $pageSize = $request->pageSize;
-            $totalPage = $query->count();
+            $totalPage = $query->paginate($request->pageSize ?? null);
             $records = $query->offset($page * $pageSize)->limit($pageSize)->get();
         } else {
             $records = $query->get();
@@ -5867,7 +5867,7 @@ class ApiController extends AdminController
             $record->save();
         }
         if (isset($request->page) && isset($request->pageSize)) {
-            return $this->success(['data' => $records, 'totalPage' => $totalPage]);
+            return $this->success(['data' => $records, 'pagination'=>QueryHelper::pagination($request, $totalPage)]);
         } else {
             return $this->success($records);
         }
