@@ -39,9 +39,9 @@ class OrderController extends AdminController
     {
         Route::controller(self::class)->group(function () {
             Route::get('orders/list', [OrderController::class, 'getOrders']);
-            Route::patch('orders/update/{id}', [OrderController::class, 'updateOrders'])->middleware('check.permission:edit-order');
+            Route::patch('orders/update', [OrderController::class, 'updateOrders'])->middleware('check.permission:edit-order');
             Route::post('orders/create', [OrderController::class, 'createOrder'])->middleware('check.permission:edit-order');
-            Route::delete('orders/delete/{id}', [OrderController::class, 'deleteOrders'])->middleware('check.permission:edit-order');
+            Route::delete('orders/delete', [OrderController::class, 'deleteOrders'])->middleware('check.permission:edit-order');
             Route::get('orders/export', [OrderController::class, 'exportOrders']);
             Route::post('orders/import', [OrderController::class, 'importOrders'])->middleware('check.permission:edit-order');
             Route::post('orders/split', [OrderController::class, 'splitOrders'])->middleware('check.permission:edit-order');
@@ -172,13 +172,12 @@ class OrderController extends AdminController
             $query->offset($page * $pageSize)->limit($pageSize ?? 10);
         }
         $records = $query->paginate($request->pageSize ?? null);
-        return $this->success($records);
-        return $this->success(['data' => $records, 'pagination' => QueryHelper::pagination($request, $records)]);
+        return $this->success(['data' => $records->items(), 'pagination' => QueryHelper::pagination($request, $records), 'editable_fields' => $fields]);
     }
-    public function updateOrders(Request $request, $id)
+    public function updateOrders(Request $request)
     {
         $input = $request->all();
-        $order = Order::find($id);
+        $order = Order::find($request->id);
         if ($order) {
             try {
                 DB::beginTransaction();
@@ -303,12 +302,11 @@ class OrderController extends AdminController
                 DB::commit();
             } catch (\Throwable $th) {
                 DB::rollBack();
-                ErrorLog::saveError($request, $th);
-                return $this->failure($th, 'Đã xảy ra lỗi');
+                throw $th;
             }
             return $this->success($order, 'Cập nhật thành công');
         } else {
-            return $this->failure('', 'Không tìm thấy đơn hàng');
+            return $this->failure([], 'Không tìm thấy đơn hàng');
         }
     }
 
@@ -350,24 +348,22 @@ class OrderController extends AdminController
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+            throw $th;
         }
         return $this->success($order, 'Tạo thành công');
     }
 
-    public function deleteOrders(Request $request, $id)
+    public function deleteOrders(Request $request)
     {
         try {
             DB::beginTransaction();
-            Order::whereIn('id', $id)->delete();
+            Order::where('id', $request->id)->delete();
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+            throw $th;
         }
-        return $this->success('Xoá thành công');
+        return $this->success([], 'Xoá thành công');
     }
 
     public function exportOrders(Request $request)
@@ -650,9 +646,7 @@ class OrderController extends AdminController
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            ErrorLog::saveError($request, $th);
             throw $th;
-            return $this->failure($th, 'File import có vấn đề vui lòng kiểm tra lại');
         }
         return $this->success([], 'Upload thành công');
     }
@@ -759,8 +753,7 @@ class OrderController extends AdminController
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+            throw $th;
         }
         return $this->success([], 'Tách đơn hàng thành công');
     }
@@ -827,8 +820,7 @@ class OrderController extends AdminController
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+            throw $th;
         }
         return $this->success($plans, 'Upload thành công');
     }
@@ -841,9 +833,8 @@ class OrderController extends AdminController
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+            throw $th;
         }
-        return $this->success('', 'Đã khôi phục đơn hàng');
+        return $this->success([], 'Đã khôi phục đơn hàng');
     }
 }

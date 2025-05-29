@@ -2,24 +2,11 @@
 
 namespace App\Admin\Controllers;
 
-use App\Helpers\QueryHelper;
-use App\Models\User;
-use App\Models\DRC;
-use App\Models\GroupPlanOrder;
 use App\Models\InfoCongDoan;
-use App\Models\Line;
-use App\Models\LocatorMLTMap;
+use App\Models\LSXPallet;
 use App\Models\Machine;
 use App\Models\MachineLog;
-use App\Models\MachineParameterLogs;
 use App\Models\Material;
-use App\Models\Order;
-use App\Models\ProductionPlan;
-use App\Models\Vehicle;
-use App\Models\VOCRegister;
-use App\Models\VOCType;
-use App\Models\WarehouseFGLog;
-use App\Models\WareHouseLog;
 use App\Models\WarehouseMLTLog;
 use Encore\Admin\Controllers\AdminController;
 use Illuminate\Http\Request;
@@ -77,30 +64,37 @@ class KPIController extends AdminController
 
     public function kpiTonKhoNVL(Request $request)
     {
-        $ids = WarehouseMLTLog::has('material')
-            ->selectRaw("id, material_id, MAX(tg_nhap) as latest_tg_nhap")
-            ->groupBy('material_id')
-            ->pluck('id')->toArray();
-        $results = WarehouseMLTLog::with('material')->whereIn('id', $ids)->select('*')->selectRaw("
-                DATEDIFF(NOW(), tg_nhap) AS days_since_latest
-            ")
-            ->orderBy('tg_nhap', 'desc')
-            ->get()
-            ->mapToGroups(function ($item) {
-                $item->so_kg_cuoi = $item->material->so_kg ?? 0;
-                if ($item->days_since_latest >= 0 && $item->days_since_latest <= 90) {
-                    return ['1 Quý' => $item];
-                } else if ($item->days_since_latest >= 91 && $item->days_since_latest <= 180) {
-                    return ['2 Quý' => $item];
-                } else if ($item->days_since_latest >= 181 && $item->days_since_latest <= 270) {
-                    return ['3 Quý' => $item];
-                } else if ($item->days_since_latest >= 271 && $item->days_since_latest <= 365) {
-                    return ['4 Quý' => $item];
-                } else if ($item->days_since_latest > 365) {
-                    return ['> 1 Năm' => $item];
-                }
-            })->sortKeys();
-        // return $results;
+        // $query = WarehouseMLTLog::has('material')->whereIn('id', function ($query) {
+        //     $query->selectRaw('MIN(id)')
+        //         ->from('warehouse_mlt_logs')
+        //         ->groupBy('material_id');
+        // })->orderByraw('CHAR_LENGTH(material_id) DESC')->orderBy('material_id');
+        // // Lấy tg_xuat của bản ghi xuất mới nhất cho mỗi material_id
+        // $query->leftJoinSub(
+        //     WarehouseMLTLog::select('material_id as mi', WarehouseMLTLog::raw('MAX(tg_xuat) as latest_tg_xuat'))
+        //         ->whereNotNull('tg_xuat')
+        //         ->groupBy('material_id'),
+        //     'latest_exports',
+        //     function ($join) {
+        //         $join->on('latest_exports.mi', '=', 'warehouse_mlt_logs.material_id');
+        //     }
+        // );
+        $materials = Material::where('so_kg', '>', 0)->get();
+        $results = $materials->mapToGroups(function ($item) {
+            $created_at = Carbon::parse($item->created_at);
+            $days_since_latest = $created_at->diffInDays(Carbon::now());
+            if ($days_since_latest >= 0 && $days_since_latest <= 90) {
+                return ['1 Quý' => $item];
+            } else if ($days_since_latest >= 91 && $days_since_latest <= 180) {
+                return ['2 Quý' => $item];
+            } else if ($days_since_latest >= 181 && $days_since_latest <= 270) {
+                return ['3 Quý' => $item];
+            } else if ($days_since_latest >= 271 && $days_since_latest <= 365) {
+                return ['4 Quý' => $item];
+            } else if ($days_since_latest > 365) {
+                return ['> 1 Năm' => $item];
+            }
+        })->sortKeys();
         $quarters = [
             '1 Quý' => 0,
             '2 Quý' => 0,
@@ -111,7 +105,7 @@ class KPIController extends AdminController
 
         // Gán dữ liệu từ kết quả truy vấn
         foreach ($results as $key => $row) {
-            $quarters[$key] = $row->sum('so_kg_cuoi');
+            $quarters[$key] = $row->sum('so_kg');
         }
         $data['categories'] = array_keys($quarters);
         $data['inventory'] = array_values($quarters);
@@ -155,21 +149,8 @@ class KPIController extends AdminController
         $machines = Machine::where('is_iot', 1)->pluck('id')->toArray();
         foreach ($period as $date) {
             $label = $date->format('d/m');
-            // $machine_param_logs = MachineParameterLogs::whereIn('machine_id', $machines)
-            //     ->where('info->Machine_Status', '!=', '0.0')
-            //     ->whereNotNull('info')
-            //     ->whereDate('created_at', $date->format('Y-m-d'))
-            //     ->select(
-            //         'machine_id',
-            //         DB::raw('DATE(created_at) as log_date'), // Tách ngày
-            //         DB::raw('MIN(created_at) as start_time'), // Log đầu tiên trong ngày
-            //         DB::raw('MAX(created_at) as end_time'),   // Log cuối cùng trong ngày
-            //         DB::raw('TIMESTAMPDIFF(SECOND, MIN(created_at), MAX(created_at)) as working_seconds') // Thời gian làm việc
-            //     )
-            //     ->groupBy('machine_id', 'log_date')
-            //     ->get();
             $total_run_time = 24 * 3600 * count($machines);
-            if($date->format('Y-m-d') == date('Y-m-d')) {
+            if ($date->format('Y-m-d') == date('Y-m-d')) {
                 $total_run_time = (time() - strtotime(date('Y-m-d 00:00:00'))) * count($machines);
             }
             $machine_logs = MachineLog::selectRaw("
@@ -194,7 +175,7 @@ class KPIController extends AdminController
             $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm
             // Tính tỷ lệ vận hành
             $ty_le_van_hanh = floor(($thoi_gian_chay / max(1, $thoi_gian_lam_viec)) * 100); // Tính phần trăm
-            if($ty_le_van_hanh < 80) {
+            if ($ty_le_van_hanh < 80) {
                 $ty_le_van_hanh = rand(85, 95);
             }
             $data['categories'][] = $label;
@@ -227,37 +208,17 @@ class KPIController extends AdminController
         return $this->success($data);
     }
 
-    public function kpiTonKhoTP(Request $request)
+    public function kpiTonKhoTP()
     {
+        Log::info('Updating KPI Warehouse FG Data');
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
-        $machineDan = Machine::where('line_id', 32)->get()->pluck('id')->toArray();
-        $machineXaLot = Machine::where('line_id', 33)->get()->pluck('id')->toArray();
-        $thung = InfoCongDoan::whereIn('machine_id', $machineDan)->get()->pluck('lo_sx')->unique()->toArray();
-        $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
-        
-        // return $export;
-        $inventories = WareHouseLog::select('so_luong', 'lo_sx')
-            ->selectRaw("
-                CASE
-                    WHEN lo_sx IN ('" . implode("','", $thung) . "') THEN 'Thùng'
-                    WHEN lo_sx IN ('" . implode("','", $lot) . "') THEN 'Lot'
-                END AS lotType,
-                CASE
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) <= 30 THEN '1 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 31 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 60 THEN '2 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 61 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 90 THEN '3 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 91 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 120 THEN '4 tháng'
-                    ELSE '> 5 tháng'
-                END AS time_range,
-                DATEDIFF(NOW(), created_at) AS days_since_latest
-            ")
-            ->where('type', 1)
-            ->doesntHave('exportRecord')
-            ->get() // Loại bỏ các `lo_sx` đã xuất
-            ->groupBy(['lotType', function ($item) {
-                return $item->time_range;
-            }], preserveKeys: true);
+        $lsx_pallets = LSXPallet::whereIn('type', [1, 2])
+            ->with('warehouse_fg_logs')
+            ->where('remain_quantity', '>', 0)
+            ->where('status', 1)
+            ->orderBy('id', 'desc')
+            ->get();
         $months = [
             '1 tháng' => 0,
             '2 tháng' => 0,
@@ -266,24 +227,46 @@ class KPIController extends AdminController
             '> 5 tháng' => 0,
         ];
         $series = [];
-        foreach ($inventories as $lotType => $inventory) {
-            if (!$lotType) {
+        $filtered_data = [
+            'thung' => [],
+            'lot' => [],
+        ];
+        $overdate = [];
+        $now = Carbon::now();
+        foreach ($lsx_pallets as $lsx_pallet) {
+            $seriesItem = [];
+            $type = $lsx_pallet->type == 1 ? 'thung' : 'lot';
+            // $seriesItem['data'] = [];
+            if (count($lsx_pallet->warehouse_fg_logs) <= 0) {
                 continue;
             }
-            $seriesItem = [];
-            $seriesItem['name'] = $lotType;
-            $seriesItem['data'] = [];
-            foreach ($months as $key => $month) {
-                if (isset($inventory[$key])) {
-                    $seriesItem['data'][] = (int)$inventory[$key]->sum('so_luong');
-                } else {
-                    $seriesItem['data'][] = 0;
-                }
+            if ($now->diffInDays($lsx_pallet->warehouse_fg_logs[0]->created_at) <= 30) {
+                $inventory_period = "1 tháng";
+            } else if ($now->diffInDays($lsx_pallet->warehouse_fg_logs[0]->created_at) <= 60) {
+                $inventory_period = "2 tháng";
+            } else if ($now->diffInDays($lsx_pallet->warehouse_fg_logs[0]->created_at) <= 90) {
+                $inventory_period = "3 tháng";
+            } else if ($now->diffInDays($lsx_pallet->warehouse_fg_logs[0]->created_at) <= 120) {
+                $inventory_period = "4 tháng";
+            } else {
+                $inventory_period = "> 5 tháng";
+                $overdate[] = $lsx_pallet;
             }
-            $series[] = $seriesItem;
+            if (isset($filtered_data[$type][$inventory_period])) {
+                $filtered_data[$type][$inventory_period] += (int)$lsx_pallet->so_luong;
+            } else {
+                $filtered_data[$type][$inventory_period] = (int)$lsx_pallet->so_luong;
+            }
         }
+        $data = [];
         $data['categories'] = array_keys($months);
-        $data['series'] = $series;
+        $data['series'] = [];
+        foreach ($filtered_data as $type => $result) {
+            $data['series'][] = [
+                'name' => $type === 'thung' ? 'Thùng' : 'Lót',
+                'data' => array_values($result)
+            ];
+        };
         return $this->success($data);
     }
 
@@ -343,5 +326,44 @@ class KPIController extends AdminController
             $data['ty_le_ng'][] = $ty_le;
         }
         return $this->success($data);
+    }
+
+    //Cronjob để cập nhật KPI
+
+    public function cronjob($date = null)
+    {
+        return 'done';
+    }
+
+    protected function calcMetric(string $code, string $date)
+    {
+        switch ($code) {
+            case 'slg_kh':
+                $start = date('Y-m-d', strtotime($request->start_date ?? 'now'));
+                $end = date('Y-m-d', strtotime($request->end_date ?? 'now'));
+                $period = CarbonPeriod::create($start, $end);
+                $data = [
+                    'categories' => [], // Trục hoành (ngày)
+                    'plannedQuantity' => [],  // Số lượng tất cả công đoạn
+                    'actualQuantity' => [] // Số lượng công đoạn "Dợn sóng"
+                ];
+                $machines = Machine::where('is_iot', 1)->where('line_id', 30)->pluck('id')->toArray();
+                foreach ($period as $date) {
+                    $label = $date->format('d/m');
+                    $plannedQuantity = InfoCongDoan::whereIn('machine_id', $machines)->where(function ($q) use ($date) {
+                        $q->whereDate('ngay_sx', $date->format("Y-m-d"))->orWhereDate('thoi_gian_bat_dau', $date->format("Y-m-d"));
+                    })->sum('dinh_muc');
+                    $actualQuantity = InfoCongDoan::whereIn('machine_id', $machines)->whereDate('thoi_gian_bat_dau', $date->format("Y-m-d"))->sum('sl_dau_ra_hang_loat');
+                    $data['categories'][] = $label; // Ngày trên trục hoành
+                    $data['plannedQuantity'][] = (int)$plannedQuantity; // Tổng số lượng tất cả công đoạn
+                    $data['actualQuantity'][] = (int)$actualQuantity; // Số lượng công đoạn "Dợn sóng"
+                }
+                return $this->success($data);
+                return (float) DB::table('production_plans')
+                    ->whereDate('plan_date', $date)
+                    ->sum('quantity');
+            default:
+                return 0;
+        }
     }
 }

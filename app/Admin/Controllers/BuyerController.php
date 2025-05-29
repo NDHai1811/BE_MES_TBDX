@@ -36,7 +36,6 @@ class BuyerController extends AdminController
 
     public function listBuyer(Request $request)
     {
-
         $query = Buyer::with('customershort')->orderBy('created_at', 'DESC');
         if ($request->customer_id) {
             $query = $query->where('customer_id', 'like', '%' . $request->customer_id . '%');
@@ -54,11 +53,26 @@ class BuyerController extends AdminController
         if ($request->id) {
             $query = $query->where('id', 'like', '%' . $request->id . '%');
         }
-        if (isset($request->page) && isset($request->pageSize)) {
-            $page = $request->page - 1;
-            $pageSize = $request->pageSize;
-            $totalPage = $query->count();
-            $records = $query->offset($page * $pageSize)->limit($pageSize)->get();
+        if ($request->ma_cuon_f) {
+            $query = $query->where('ma_cuon_f', 'like', '%' . $request->ma_cuon_f . '%');
+        }
+        if ($request->ma_cuon_se) {
+            $query = $query->where('ma_cuon_se', 'like', '%' . $request->ma_cuon_se . '%');
+        }
+        if ($request->ma_cuon_le) {
+            $query = $query->where('ma_cuon_le', 'like', '%' . $request->ma_cuon_le . '%');
+        }
+        if ($request->ma_cuon_sb) {
+            $query = $query->where('ma_cuon_sb', 'like', '%' . $request->ma_cuon_sb . '%');
+        }
+        if ($request->ma_cuon_lb) {
+            $query = $query->where('ma_cuon_lb', 'like', '%' . $request->ma_cuon_lb . '%');
+        }
+        if ($request->ma_cuon_sc) {
+            $query = $query->where('ma_cuon_sc', 'like', '%' . $request->ma_cuon_sc . '%');
+        }
+        if ($request->ma_cuon_lc) {
+            $query = $query->where('ma_cuon_lc', 'like', '%' . $request->ma_cuon_lc . '%');
         }
         $records = $query->paginate($request->pageSize ?? PHP_INT_MAX);
         $buyers = $records->items();

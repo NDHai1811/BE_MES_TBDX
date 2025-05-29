@@ -432,15 +432,16 @@ Route::group([
     $router->get('manufacture/produce-overall', [ApiController::class, 'produceOverall']);
     $router->get('manufacture/produce-table', [ApiController::class, 'produceHistory']);
     $router->get('export/produce/history', [ApiController::class, 'exportProduceHistory']);
-    $router->get('manufacture/buyer/list', [ApiController::class, 'listBuyer']);
     $router->delete('manufacture/production-histoy/delete/{id}', [ApiController::class, 'deleteProductionHistory']);
 
     $router->get('manufacture/order/list', [ApiController::class, 'getOrderList']);
 
     $router->get('manufacture/layout/list', [ApiController::class, 'listLayout']);
+    $router->get('manufacture/drc/list', [ApiController::class, 'listDRC']);
+    $router->get('manufacture/buyer/list', [ApiController::class, 'listBuyer']);
+
     $router->post('manufacture/handle-order', [ApiController::class, 'handleOrder']);
     $router->post('manufacture/create-plan', [ApiController::class, 'createProductionPlan']);
-    $router->get('manufacture/drc/list', [ApiController::class, 'listDRC']);
 
     $router->post('manufacture/tem/upload', [ApiController::class, 'uploadTem']);
     $router->get('manufacture/tem/list', [ApiController::class, 'listTem']);
