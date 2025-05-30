@@ -17,7 +17,9 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class UserController extends AdminController
@@ -62,7 +64,7 @@ class UserController extends AdminController
             $user->value = $user->id;
             $user->label = $user->name;
         }
-        return $this->success($users);
+        // return $this->success($users);
         return $this->success(['data' => $users, 'pagination' => QueryHelper::pagination($request, $records)]);
     }
     public function getUserRoles(Request $request)
@@ -114,117 +116,153 @@ class UserController extends AdminController
 
     public function exportUsers(Request $request)
     {
-        $query = User::with('roles')->whereNull('deleted_at');
-        if (!isset($request->all_user)) {
-            $query->whereNull('deleted_at');
-        }
-        if (isset($request->name)) {
-            $query->where('name', 'like', "%$request->name%");
-        }
-        if (isset($request->username)) {
-            $query->where('username', 'like', "%$request->username%");
-        }
-        if (isset($request->department_name)) {
-            $query->whereHas('department', function($q)use($request){
-                $q->where('name', 'like', "$request->department_name%");
-            });
-        }
-        $users = $query->get();
-        foreach ($users as $user) {
-            $bo_phan = [];
-            foreach ($user->roles as $role) {
-                $bo_phan[] = $role->name;
+        try {
+            $query = User::with('roles', 'department')->whereNull('deleted_at');
+    
+            if (!isset($request->all_user)) {
+                $query->whereNull('deleted_at');
             }
-            $user->bo_phan = implode(", ", $bo_phan);
-            $user->department_name = $user->department->name ?? "";
-        }
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $start_row = 2;
-        $start_col = 1;
-        $centerStyle = [
-            'alignment' => [
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-                'wrapText' => true
-            ],
-            'borders' => array(
-                'outline' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
-        $headerStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => array('argb' => 'BFBFBF')
-            ]
-        ]);
-        $titleStyle = array_merge($centerStyle, [
-            'font' => ['size' => 16, 'bold' => true],
-        ]);
-        $border = [
-            'borders' => array(
-                'allBorders' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
-        $header = ['Username', 'Tên', 'Bộ phận', 'Phân quyền', 'User chức năng'];
-        $table_key = [
-            'A' => 'username',
-            'B' => 'name',
-            'C' => 'department_name',
-            'D' => 'bo_phan',
-            'E' => 'function_user'
-        ];
-        foreach ($header as $key => $cell) {
-            if (!is_array($cell)) {
-                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
+    
+            if (isset($request->name)) {
+                $query->where('name', 'like', "%$request->name%");
             }
-            $start_col += 1;
-        }
-
-        $sheet->setCellValue([1, 1], 'Quản lý tài khoản')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
-        $sheet->getRowDimension(1)->setRowHeight(40);
-        $table_col = 1;
-        $table_row = $start_row + 1;
-        foreach ($users->toArray() as $key => $row) {
-            $table_col = 1;
-            $row = (array)$row;
-            foreach ($table_key as $k => $value) {
-                if (isset($row[$value])) {
-                    $sheet->setCellValue($k . $table_row, $row[$value])->getStyle($k . $table_row)->applyFromArray($centerStyle);
-                } else {
-                    continue;
+    
+            if (isset($request->username)) {
+                $query->where('username', 'like', "%$request->username%");
+            }
+    
+            if (isset($request->department_name)) {
+                $query->whereHas('department', function ($q) use ($request) {
+                    $q->where('name', 'like', "$request->department_name%");
+                });
+            }
+    
+            $users = $query->get();
+            $data = [];
+    
+            foreach ($users as $user) {
+                $roles = $user->roles->pluck('name')->toArray();
+                $data[] = [
+                    'username' => $user->username,
+                    'name' => $user->name,
+                    'department_name' => $user->department->name ?? '',
+                    'bo_phan' => implode(', ', $roles),
+                    'function_user' => $user->function_user,
+                ];
+            }
+    
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+    
+            $centerStyle = [
+                'alignment' => [
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'wrapText' => true
+                ],
+                'borders' => [
+                    'outline' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ];
+    
+            $headerStyle = array_merge($centerStyle, [
+                'font' => ['bold' => true],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['argb' => 'BFBFBF']
+                ]
+            ]);
+    
+            $titleStyle = array_merge($centerStyle, [
+                'font' => ['size' => 16, 'bold' => true],
+            ]);
+    
+            $header = ['Username', 'Tên', 'Bộ phận', 'Phân quyền', 'User chức năng'];
+            $columns = ['A', 'B', 'C', 'D', 'E'];
+    
+            // Title
+            $sheet->setCellValue('A1', 'Quản lý tài khoản')
+                ->mergeCells('A1:E1')
+                ->getStyle('A1:E1')->applyFromArray($titleStyle);
+            $sheet->getRowDimension(1)->setRowHeight(40);
+    
+            // Header
+            foreach ($header as $key => $title) {
+                $col = $columns[$key];
+                $sheet->setCellValue("$col" . 2, $title);
+                $sheet->getStyle("$col" . 2)->applyFromArray($headerStyle);
+            }
+    
+            // Data
+            $rowIndex = 3;
+            foreach ($data as $row) {
+                $sheet->setCellValue("A$rowIndex", $row['username']);
+                $sheet->setCellValue("B$rowIndex", $row['name']);
+                $sheet->setCellValue("C$rowIndex", $row['department_name']);
+                $sheet->setCellValue("D$rowIndex", $row['bo_phan']);
+                $sheet->setCellValue("E$rowIndex", $row['function_user']);
+                foreach ($columns as $col) {
+                    $sheet->getStyle("$col$rowIndex")->applyFromArray($centerStyle);
                 }
-                $table_col += 1;
+                $rowIndex++;
             }
-            $table_row += 1;
-        }
-        foreach ($sheet->getColumnIterator() as $column) {
-            if ($column->getColumnIndex() === 'D') {
-                $sheet->getColumnDimension($column->getColumnIndex())->setWidth(50);
-            } else {
-                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+    
+            // Column sizing
+            foreach ($sheet->getColumnIterator() as $column) {
+                $colIndex = $column->getColumnIndex();
+                if ($colIndex === 'D') {
+                    $sheet->getColumnDimension($colIndex)->setWidth(50);
+                } else {
+                    $sheet->getColumnDimension($colIndex)->setAutoSize(true);
+                }
             }
-
-            $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
+    
+            // Border for all data
+            $sheet->getStyle("A2:E" . ($rowIndex - 1))->applyFromArray([
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ]);
+    
+            // ==== Lưu file và trả về base64 ====
+            $timestamp = date('Ymd_His');
+            $fileName = "DanhSachTaiKhoan_{$timestamp}.xlsx";
+            $filePath = "export/$fileName";
+    
+            Storage::disk('excel')->makeDirectory('export');
+    
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save(storage_path("app/excel/$filePath"));
+    
+            $fileContent = Storage::disk('excel')->get($filePath);
+            $fileType = File::mimeType(storage_path("app/excel/$filePath"));
+            $base64 = base64_encode($fileContent);
+            $fileBase64Uri = "data:$fileType;base64,$base64";
+    
+            Storage::disk('excel')->delete($filePath);
+    
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'file' => $fileName,
+                    'type' => $fileType,
+                    'data' => $fileBase64Uri,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
-        header("Content-Description: File Transfer");
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Danh sách tài khoản.xlsx"');
-        header('Cache-Control: max-age=0');
-        header("Content-Transfer-Encoding: binary");
-        header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $writer->save('exported_files/Danh sách tài khoản.xlsx');
-        $href = '/exported_files/Danh sách tài khoản.xlsx';
-        return $this->success($href);
     }
+    
 
     public function importUsers(Request $request)
     {

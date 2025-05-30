@@ -52,11 +52,13 @@ class DeliveryNoteController extends AdminController
             $pageSize = $request->pageSize;
             $query->offset($page * $pageSize)->limit($pageSize)->get();
         }
-        $records = $query->with('exporters')->get();
+        $records = $query->with('exporters','creator','driver')->get();
         foreach ($records as $key => $value) {
             $value->exporter_ids = array_filter(array_map(function($exporter){
                 return $exporter['id'];
             }, $value->exporters->toArray()));
+            $value->creator_name = $value->creator ? $value->creator->name : 'Không có dữ liệu';
+            $value->driver_name = $value->driver ? $value->driver->name : 'Không có dữ liệu ';
         }
         return $this->success(['data'=>$records, 'totalPage'=>$totalPage]);
     }
