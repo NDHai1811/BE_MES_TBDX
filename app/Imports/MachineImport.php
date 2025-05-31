@@ -52,7 +52,7 @@ class MachineImport implements ToCollection, WithHeadingRow, WithStartRow
         $machine = Machine::updateOrCreate([
             'id' => $row['id'],
         ], [
-            'machine_name' => $row['name'],
+            'name' => $row['name'],
             'line_id' => $lineId,
             'kieu_loai' => $row['kieu_loai'] ?? null,
             'device_id' => $row['device_id'] ?? null,

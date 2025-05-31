@@ -82,6 +82,8 @@ use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 
 class ApiController extends AdminController
 {
@@ -4531,123 +4533,156 @@ class ApiController extends AdminController
 
     public function exportWarehouseFGExportList(Request $request)
     {
-        $query = WareHouseFGExport::with('delivery_note', 'order', 'creator')->orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
-        if (isset($request->start_date) && isset($request->end_date)) {
-            $query->whereDate('ngay_xuat', '>=', date('Y-m-d 00:00:00', strtotime($request->start_date)))->whereDate('ngay_xuat', '<=', date('Y-m-d 23:59:59', strtotime($request->end_date)));
-        }
-        if (isset($request->customer_id)) {
-            $query->where('warehouse_fg_export.customer_id', 'like', '%' . $request->customer_id . '%');
-        }
-        if (isset($request->mdh)) {
-            $query->where('warehouse_fg_export.mdh', 'like', '%' . $request->mdh . '%');
-        }
-        if (isset($request->mql)) {
-            $query->where('warehouse_fg_export.mql', $request->mql);
-        }
-        if (isset($request->delivery_note_id)) {
-            $query->where('warehouse_fg_export.delivery_note_id', 'like', '%' . $request->delivery_note_id . '%');
-        }
-        if (isset($request->created_by)) {
-            $user_ids = User::where('name', 'like', '%' . $request->created_by . '%')->pluck('id')->toArray();
-            $query = $query->whereIn('created_by', $user_ids);
-        }
-        $records = $query->get();
-        $data = [];
-        foreach ($records as $record) {
-            $obj = new stdClass;
-            $obj->delivery_note_id = $record->delivery_note_id;
-            $obj->created_by = $record->creator->name ?? "";
-            $obj->ngay_xuat = date('d/m/Y', strtotime($record->ngay_xuat));
-            $obj->thoi_gian_xuat = date('H:i:s', strtotime($record->ngay_xuat));
-            $obj->khach_hang = $record->order->short_name ?? "";
-            $obj->mdh = $record->mdh;
-            $obj->mql = $record->mql;
-            $obj->so_luong_dh = $record->order->sl ?? '';
-            $obj->so_luong = $record->so_luong ?? '';
-            $obj->xuong_giao = $record->xuong_giao;
-            $obj->driver_name = $record->delivery_note->driver->name ?? '';
-            $obj->vehicle_id = $record->delivery_note->vehicle->id ?? '';
-            $obj->exporter_name = $record->delivery_note->exporter->name ?? '';
-            $data[] = (array)$obj;
-        }
-        $centerStyle = [
-            'alignment' => [
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-                'wrapText' => true
-            ],
-            'borders' => array(
-                'outline' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
-        $headerStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => array('argb' => 'BFBFBF')
-            ]
-        ]);
-        $titleStyle = array_merge($centerStyle, [
-            'font' => ['size' => 16, 'bold' => true],
-        ]);
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $start_row = 2;
-        $start_col = 1;
-        $sheet = $spreadsheet->getActiveSheet();
-        $header = [
-            'Lệnh xuất',
-            "Người báo xuất",
-            'Ngày xuất',
-            "Thời gian xuất",
-            "Khách hàng",
-            "MĐH",
-            "MQL",
-            'Số lượng ĐH',
-            "Số lượng cần xuất",
-            "FAC",
-            "Tài xế",
-            'Số xe',
-            'Người xuất'
-        ];
-        foreach ($header as $key => $cell) {
-            $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
-            $start_col += 1;
-        }
-
-        $sheet->setCellValue([1, 1], 'Kế hoạch xuất kho')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
-        $sheet->getRowDimension(1)->setRowHeight(40);
-        $sheet->fromArray($data, null, 'A3');
-        foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-        }
-        $start_row_table = $start_row + 1;
-        $sheet->getStyle([1, $start_row_table, $start_col - 1, count($data) + $start_row_table - 1])->applyFromArray(
-            array_merge(
-                $centerStyle,
-                array(
-                    'borders' => array(
-                        'allBorders' => array(
+        try {
+            $query = WareHouseFGExport::with('delivery_note', 'order', 'creator')
+                ->orderBy('mdh', 'ASC')
+                ->orderBy('mql', 'ASC');
+    
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $query->whereDate('ngay_xuat', '>=', date('Y-m-d 00:00:00', strtotime($request->start_date)))
+                    ->whereDate('ngay_xuat', '<=', date('Y-m-d 23:59:59', strtotime($request->end_date)));
+            }
+    
+            if ($request->filled('customer_id')) {
+                $query->where('warehouse_fg_export.customer_id', 'like', '%' . $request->customer_id . '%');
+            }
+    
+            if ($request->filled('mdh')) {
+                $query->where('warehouse_fg_export.mdh', 'like', '%' . $request->mdh . '%');
+            }
+    
+            if ($request->filled('mql')) {
+                $query->where('warehouse_fg_export.mql', $request->mql);
+            }
+    
+            if ($request->filled('delivery_note_id')) {
+                $query->where('warehouse_fg_export.delivery_note_id', 'like', '%' . $request->delivery_note_id . '%');
+            }
+    
+            if ($request->filled('created_by')) {
+                $user_ids = User::where('name', 'like', '%' . $request->created_by . '%')->pluck('id')->toArray();
+                $query->whereIn('created_by', $user_ids);
+            }
+    
+            $records = $query->get();
+            $data = [];
+    
+            foreach ($records as $record) {
+                $obj = new \stdClass;
+                $obj->delivery_note_id = $record->delivery_note_id;
+                $obj->created_by = $record->creator->name ?? '';
+                $obj->ngay_xuat = $record->ngay_xuat ? date('d/m/Y', strtotime($record->ngay_xuat)) : '';
+                $obj->thoi_gian_xuat = $record->ngay_xuat ? date('H:i:s', strtotime($record->ngay_xuat)) : '';
+                $obj->khach_hang = $record->order->short_name ?? '';
+                $obj->mdh = $record->mdh;
+                $obj->mql = $record->mql;
+                $obj->so_luong_dh = $record->order->sl ?? '';
+                $obj->so_luong = $record->so_luong ?? '';
+                $obj->xuong_giao = $record->xuong_giao ?? '';
+                $obj->driver_name = $record->delivery_note->driver->name ?? '';
+                $obj->vehicle_id = $record->delivery_note->vehicle->id ?? '';
+                $obj->exporter_name = $record->delivery_note->exporter->name ?? '';
+                $data[] = (array)$obj;
+            }
+    
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $start_row = 2;
+            $start_col = 1;
+    
+            $centerStyle = [
+                'alignment' => [
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'wrapText' => true,
+                ],
+                'borders' => [
+                    'outline' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ];
+    
+            $headerStyle = array_merge($centerStyle, [
+                'font' => ['bold' => true],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['argb' => 'BFBFBF'],
+                ],
+            ]);
+    
+            $titleStyle = array_merge($centerStyle, [
+                'font' => ['size' => 16, 'bold' => true],
+            ]);
+    
+            $header = [
+                'Lệnh xuất', 'Người báo xuất', 'Ngày xuất', 'Thời gian xuất', 'Khách hàng',
+                'MĐH', 'MQL', 'Số lượng ĐH', 'Số lượng cần xuất', 'FAC', 'Tài xế', 'Số xe', 'Người xuất'
+            ];
+    
+            foreach ($header as $key => $cell) {
+                $sheet->setCellValue([$start_col, $start_row], $cell)
+                    ->mergeCells([$start_col, $start_row, $start_col, $start_row])
+                    ->getStyle([$start_col, $start_row, $start_col, $start_row])
+                    ->applyFromArray($headerStyle);
+                $start_col++;
+            }
+    
+            $sheet->setCellValue([1, 1], 'Kế hoạch xuất kho')
+                ->mergeCells([1, 1, count($header), 1])
+                ->getStyle([1, 1, count($header), 1])
+                ->applyFromArray($titleStyle);
+    
+            $sheet->fromArray($data, null, 'A3', true);
+    
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            }
+    
+            $sheet->getStyle([1, 3, count($header), count($data) + 2])
+                ->applyFromArray(array_merge($centerStyle, [
+                    'borders' => [
+                        'allBorders' => [
                             'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                            'color' => array('argb' => '000000'),
-                        ),
-                    )
-                )
-            )
-        );
-        header("Content-Description: File Transfer");
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Kế hoạch xuất kho.xlsx"');
-        header('Cache-Control: max-age=0');
-        header("Content-Transfer-Encoding: binary");
-        header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $writer->save('exported_files/Kế hoạch xuất kho.xlsx');
-        $href = '/exported_files/Kế hoạch xuất kho.xlsx';
-        return $this->success($href);
+                            'color' => ['argb' => '000000'],
+                        ],
+                    ],
+                ]));
+    
+            // ==== Lưu file và trả về base64 ====
+            $timestamp = date('Ymd_His');
+            $fileName = "KeHoachXuatKho_{$timestamp}.xlsx";
+            $filePath = "export/$fileName";
+    
+            Storage::disk('excel')->makeDirectory('export');
+    
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save(storage_path("app/excel/$filePath"));
+    
+            $fileContent = Storage::disk('excel')->get($filePath);
+            $fileType = File::mimeType(storage_path("app/excel/$filePath"));
+            $base64 = base64_encode($fileContent);
+            $fileBase64Uri = "data:$fileType;base64,$base64";
+    
+            Storage::disk('excel')->delete($filePath);
+    
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'file' => $fileName,
+                    'type' => $fileType,
+                    'data' => $fileBase64Uri,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
+    
 
     public function updateExportFGLog(Request $request)
     {
@@ -8352,140 +8387,170 @@ class ApiController extends AdminController
 
     public function exportWarehouseMLTLog(Request $request)
     {
-        $query = $this->customQueryWarehouseMLTLog($request);
-        $records = $query->get();
-        $data = [];
-        foreach ($records as $key => $record) {
-            $so_kg_nhap = $record->so_kg_nhap;
-            $so_kg_cuoi = 0;
-            $tg_xuat = $record->latest_tg_xuat;
-            //Lấy bản ghi nhập mới nhất của NVL
-            $lastImportLog = WarehouseMLTLog::where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
-            if(!$lastImportLog->tg_xuat){
-                //Nếu bản ghi nhập mới nhất chưa có xuất thì tìm bản ghi xuất mới nhất
-                $lastExportLog = WarehouseMLTLog::whereNotNull('tg_xuat')->where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
-                if($lastExportLog){
-                    //Nếu có bản ghi xuất lấy số lượng nhập cuối cùng là của bản ghi có nhập xuất mới nhất
-                    $so_kg_nhap = $lastExportLog->so_kg_nhap;
-                    $tg_xuat = $lastExportLog->tg_xuat;
+        try {
+            $query = $this->customQueryWarehouseMLTLog($request);
+            $records = $query->get();
+            $data = [];
+    
+            foreach ($records as $key => $record) {
+                $so_kg_nhap = $record->so_kg_nhap;
+                $so_kg_cuoi = 0;
+                $tg_xuat = $record->latest_tg_xuat;
+    
+                $lastImportLog = WarehouseMLTLog::where('material_id', $record->material_id)
+                    ->orderBy('tg_nhap', 'DESC')->first();
+    
+                if (!$lastImportLog->tg_xuat) {
+                    $lastExportLog = WarehouseMLTLog::whereNotNull('tg_xuat')
+                        ->where('material_id', $record->material_id)
+                        ->orderBy('tg_nhap', 'DESC')->first();
+    
+                    if ($lastExportLog) {
+                        $so_kg_nhap = $lastExportLog->so_kg_nhap;
+                        $tg_xuat = $lastExportLog->tg_xuat;
+                    }
+    
+                    $so_kg_cuoi = $lastImportLog->so_kg_nhap;
+                } else {
+                    $so_kg_nhap = $lastImportLog->so_kg_nhap;
                 }
-                //Nếu ko có bản ghi xuất mới nhất thì số kg đầu giữ nguyên, số kg cuối = số kg nhập
-                $so_kg_cuoi = $lastImportLog->so_kg_nhap;
-            }else{
-                $so_kg_nhap = $lastImportLog->so_kg_nhap;
+    
+                $obj = new \stdClass;
+                $obj->stt = $key + 1;
+                $obj->material_id = $record->material_id;
+                $obj->ten_ncc = $record->material->supplier->name ?? "";
+                $obj->loai_giay = $record->material->loai_giay ?? "";
+                $obj->fsc = $record->material->fsc ? 'X' : '';
+                $obj->kho_giay = $record->material->kho_giay ?? "";
+                $obj->dinh_luong = $record->material->dinh_luong ?? "";
+                $obj->ma_cuon_ncc = $record->material->ma_cuon_ncc ?? "";
+                $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
+                $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import->goods_receipt_note_id ?? '';
+                $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
+                $obj->so_kg_dau = $record->material->so_kg_dau ?? "0";
+                $obj->so_kg_nhap = $so_kg_nhap;
+                $obj->so_kg_xuat = $so_kg_nhap - $so_kg_cuoi;
+                $obj->so_kg_cuoi = $so_kg_cuoi;
+                $obj->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
+                $obj->so_cuon = $obj->so_kg_dau != $obj->so_kg_cuoi ? "0" : "1";
+                $obj->khu_vuc = $record->locatorMlt->warehouse_mlt->name ?? "";
+                $obj->locator_id = $record->locator_id;
+    
+                $data[] = (array)$obj;
             }
-            $obj = new stdClass;
-            $obj->stt = $key + 1;
-            $obj->material_id = $record->material_id;
-            $obj->ten_ncc = $record->material->supplier->name ?? "";
-            $obj->loai_giay = $record->material->loai_giay ?? "";
-            $obj->fsc = $record->material->fsc ? 'X' : '';
-            $obj->kho_giay = $record->material->kho_giay ?? "";
-            $obj->dinh_luong = $record->material->dinh_luong ?? "";
-            $obj->ma_cuon_ncc = $record->material->ma_cuon_ncc ?? "";
-            $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
-            $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
-            $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
-            $obj->so_kg_dau = $record->material->so_kg_dau ?? "0";
-            $obj->so_kg_nhap = $so_kg_nhap;
-            $obj->so_kg_xuat = $so_kg_nhap - $so_kg_cuoi;
-            $obj->so_kg_cuoi = $so_kg_cuoi;
-            $obj->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
-            $obj->so_cuon = $obj->so_kg_dau != $obj->so_kg_cuoi ? "0" : "1";
-            $obj->khu_vuc = $record->locatorMlt->warehouse_mlt->name ?? "";
-            $obj->locator_id = $record->locator_id;
-            $data[] = (array)$obj;
-        }
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $start_row = 2;
-        $start_col = 1;
-        $centerStyle = [
-            'alignment' => [
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-            ],
-            'borders' => array(
-                'outline' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
-        $headerStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => array('argb' => 'BFBFBF')
-            ]
-        ]);
-        $titleStyle = array_merge($centerStyle, [
-            'font' => ['size' => 16, 'bold' => true],
-        ]);
-        $header = [
-            'STT',
-            'Mã cuộn TBDX',
-            'Tên NCC',
-            'Loại giấy',
-            'FSC',
-            'Khổ giấy (cm)',
-            'Định lượng',
-            'Mã cuộn NCC',
-            'Mã vật tư',
-            'Số phiếu nhập kho',
-            'Ngày nhập',
-            'SL đầu (kg)',
-            'SL nhập (kg)',
-            'SL xuất (kg)',
-            'SL cuối (kg)',
-            'Ngày xuất',
-            'Số cuộn',
-            'Khu vực',
-            'Vị trí',
-        ];
-        foreach ($header as $key => $cell) {
-            if (!is_array($cell)) {
-                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
-            } else {
-                $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
-                foreach ($cell as $val) {
-                    $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
-                    $start_col += 1;
-                }
-                continue;
+    
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $start_row = 2;
+            $start_col = 1;
+    
+            $centerStyle = [
+                'alignment' => [
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                ],
+                'borders' => [
+                    'outline' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ];
+    
+            $headerStyle = array_merge($centerStyle, [
+                'font' => ['bold' => true],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['argb' => 'BFBFBF']
+                ]
+            ]);
+    
+            $titleStyle = array_merge($centerStyle, [
+                'font' => ['size' => 16, 'bold' => true],
+            ]);
+    
+            $header = [
+                'STT',
+                'Mã cuộn TBDX',
+                'Tên NCC',
+                'Loại giấy',
+                'FSC',
+                'Khổ giấy (cm)',
+                'Định lượng',
+                'Mã cuộn NCC',
+                'Mã vật tư',
+                'Số phiếu nhập kho',
+                'Ngày nhập',
+                'SL đầu (kg)',
+                'SL nhập (kg)',
+                'SL xuất (kg)',
+                'SL cuối (kg)',
+                'Ngày xuất',
+                'Số cuộn',
+                'Khu vực',
+                'Vị trí',
+            ];
+    
+            foreach ($header as $key => $cell) {
+                $sheet->setCellValue([$start_col, $start_row], $cell)
+                    ->mergeCells([$start_col, $start_row, $start_col, $start_row])
+                    ->getStyle([$start_col, $start_row, $start_col, $start_row])
+                    ->applyFromArray($headerStyle);
+                $start_col++;
             }
-            $start_col += 1;
-        }
-        $sheet->setCellValue([1, 1], 'Quản lý kho NVL')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
-        $sheet->getRowDimension(1)->setRowHeight(40);
-        $sheet->fromArray($data, NULL, 'A3', true);
-        foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
-        }
-        $sheet->getStyle([1, 3, count($header), count($data) + 2])->applyFromArray(
-            array_merge(
-                $centerStyle,
-                array(
-                    'borders' => array(
-                        'allBorders' => array(
+    
+            $sheet->setCellValue([1, 1], 'Quản lý kho NVL')
+                ->mergeCells([1, 1, count($header), 1])
+                ->getStyle([1, 1, count($header), 1])
+                ->applyFromArray($titleStyle);
+    
+            $sheet->fromArray($data, NULL, 'A3', true);
+    
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            }
+    
+            $sheet->getStyle([1, 3, count($header), count($data) + 2])
+                ->applyFromArray(array_merge($centerStyle, [
+                    'borders' => [
+                        'allBorders' => [
                             'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                            'color' => array('argb' => '000000'),
-                        ),
-                    )
-                )
-            )
-        );
-        header("Content-Description: File Transfer");
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Quản lý kho NVL.xlsx"');
-        header('Cache-Control: max-age=0');
-        header("Content-Transfer-Encoding: binary");
-        header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $writer->save('exported_files/Quản lý kho NVL.xlsx');
-        $href = '/exported_files/Quản lý kho NVL.xlsx';
-        return $this->success($href);
+                            'color' => ['argb' => '000000'],
+                        ],
+                    ],
+                ]));
+    
+            // ==== Lưu file và trả về base64 ====
+            $timestamp = date('Ymd_His');
+            $fileName = "QuanLyKhoNVL_{$timestamp}.xlsx";
+            $filePath = "export/$fileName";
+    
+            Storage::disk('excel')->makeDirectory('export'); // tạo thư mục nếu chưa có
+    
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save(storage_path("app/excel/$filePath"));
+    
+            $fileContent = Storage::disk('excel')->get($filePath);
+            $fileType = File::mimeType(storage_path("app/excel/$filePath"));
+            $base64 = base64_encode($fileContent);
+            $fileBase64Uri = "data:$fileType;base64,$base64";
+    
+            Storage::disk('excel')->delete($filePath);
+    
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'file' => $fileName,
+                    'type' => $fileType,
+                    'data' => $fileBase64Uri,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     function customQueryWarehouseFGLog($request)

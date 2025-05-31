@@ -22,7 +22,7 @@ class DeliveryNote extends Model
     }
     public function driver()
     {
-        return $this->hasOne(User::class, 'id', 'driver_d');
+        return $this->hasOne(User::class, 'id', 'driver_id');
     }
     public function vehicle()
     {
