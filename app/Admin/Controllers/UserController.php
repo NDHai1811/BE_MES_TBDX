@@ -30,7 +30,7 @@ class UserController extends AdminController
         Route::controller(self::class)->group(function () {
             Route::get('users/list', [UserController::class, 'getUsers']);
             Route::get('users/roles', [UserController::class, 'getUserRoles']);
-            Route::patch('users/update', [UserController::class, 'updateUsers']);
+            Route::patch('users/update/{id}', [UserController::class, 'updateUsers']);
             Route::post('users/create', [UserController::class, 'createUsers']);
             Route::delete('users/delete', [UserController::class, 'deleteUsers']);
             Route::get('users/export', [UserController::class, 'exportUsers']);
@@ -74,6 +74,7 @@ class UserController extends AdminController
     }
     public function updateUsers(Request $request)
     {
+        // dd($request->all());
         $input = $request->all();
         $user = User::where('id', $input['id'])->first();
         if ($user) {
