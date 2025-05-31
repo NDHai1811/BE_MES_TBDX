@@ -437,7 +437,12 @@ class OrderController extends AdminController
         if (isset($request->han_giao)) {
             $query->whereDate('han_giao', date('Y-m-d', strtotime($request->han_giao)));
         }
-        $orders = $query->select(DB::raw('ROW_NUMBER() OVER(ORDER BY ID ASC) AS Row'), 'ngay_dat_hang', 'short_name', 'customer_id', 'nguoi_dat_hang', 'mdh', 'order', 'mql', 'length', 'width', 'height', 'kich_thuoc', 'unit', 'layout_type', 'sl', 'slg', 'slt', 'tmo', 'po', 'style', 'style_no', 'color', 'item', 'rm', 'size', 'price', 'into_money', 'dot', 'xuong_giao', 'note_1', 'han_giao', 'note_2', 'xuat_tai_kho', 'han_giao_sx')->get()->toArray();
+        $orders = $query->select('ngay_dat_hang', 'short_name', 'customer_id', 'nguoi_dat_hang', 'mdh', 'order', 'mql', 'length', 'width', 'height', 'kich_thuoc', 'unit', 'layout_type', 'sl', 'slg', 'slt', 'tmo', 'po', 'style', 'style_no', 'color', 'item', 'rm', 'size', 'price', 'into_money', 'dot', 'xuong_giao', 'note_1', 'han_giao', 'note_2', 'xuat_tai_kho', 'han_giao_sx')->get()->toArray();
+        
+        // Thêm số thứ tự vào từng record
+        foreach ($orders as $index => &$order) {
+            $order = array_merge(['Row' => $index + 1], $order);
+        }
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $start_row = 2;
