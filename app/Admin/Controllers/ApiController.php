@@ -6964,7 +6964,6 @@ class ApiController extends AdminController
             }
             $start_row = $table_row + 1;
         }
-
         foreach ($sheet->getColumnIterator() as $column) {
             $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
             // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
@@ -7739,6 +7738,7 @@ class ApiController extends AdminController
                 }
                 $data[] = $parse_data;
             }
+
             $start_col = 1;
             $start_row = 1;
             $sheet->setCellValue([1, $start_row], 'KẾ HOẠCH XẢ LÓT ' . date('d.m.Y', strtotime($request->start_date . ' +' . $i . ' day')))->mergeCells([1, $start_row, count($table_keyXL), $start_row])->getStyle([1, $start_row, count($table_keyXL), $start_row])->applyFromArray($titleStyle);
