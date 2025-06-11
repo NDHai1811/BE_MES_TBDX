@@ -12,6 +12,7 @@ use App\Models\Supplier;
 use App\Models\WareHouseMLTImport;
 use App\Models\WarehouseMLTLog;
 use Encore\Admin\Controllers\AdminController;
+use App\Imports\MaterialImport;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
 use Encore\Admin\Show;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MaterialController extends AdminController
 {
@@ -381,5 +383,17 @@ class MaterialController extends AdminController
                 'message' => $th->getMessage(),
             ], 500);
         }
+    }
+    public function importMaterials(Request $request){
+        $request->validate([
+            'file' => 'required|mimes:xlsx',
+        ]);
+        try {
+            Excel::import(new MaterialImport, $request->file('file'));
+        } catch (\Throwable $th) {
+            return $this->failure($th->getMessage(), 'THỰC HIỆN THẤT BẠI');
+        }
+
+        return $this->success([], 'NHẬP DỮ LIỆU THÀNH CÔNG');
     }
 }
