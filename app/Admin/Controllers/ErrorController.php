@@ -105,6 +105,9 @@ class ErrorController extends AdminController
         $file = "LoiCongDoan_$timestamp.xlsx";
         $filePath = "export/$file";
         $data = $this->errorQuery($request)->get();
+        if ($data->isEmpty()){
+            return $this->failure([], 'Không có dữ liệu để xuất', 404);
+        }
         $result = Excel::store(new LineErrorExport($data), $filePath, 'excel');
 
         if (empty($result))

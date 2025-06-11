@@ -105,6 +105,9 @@ class SupplierController extends AdminController
         $file = "NhaCungCap_$timestamp.xlsx";
         $filePath = "export/$file";
         $data = $this->supplierQuery($request)->get();
+        if ($data->isEmpty()){
+            return $this->failure([], 'Không có dữ liệu để xuất', 404);
+        }
         $result = Excel::store(new SupplierExport($data), $filePath, 'excel');
 
         if (empty($result))

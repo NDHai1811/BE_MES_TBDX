@@ -11,7 +11,7 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class LineExport implements FromCollection, WithHeadings, WithMapping, WithStyles
+class UserMachineExport implements FromCollection, WithHeadings, WithMapping, WithStyles
 {
     private $rowNumber = 0;
 
@@ -29,28 +29,34 @@ class LineExport implements FromCollection, WithHeadings, WithMapping, WithStyle
     {
         return $this->data; // Dữ liệu xuất ra file
     }
-
     public function headings(): array
     {
         return [
             'STT',
-            'Mã công đoạn',
-            'Tên công đoạn',
-            'Hiển thị',
+            'Mã nhân viên',
+            'Tên nhân viên',
+            'Tổ',
+            'Máy',
         ];
     }
-
     public function map($record): array
     {
         $this->rowNumber++;
+        
+        // Convert machine_id array to comma-separated string
+        $machineIds = '';
+        if (is_array($record->machine_id) && !empty($record->machine_id)) {
+            $machineIds = implode(', ', $record->machine_id);
+        }
+        
         return [
             $this->rowNumber,
-            $record->id,
+            $record->username,
             $record->name,
-            $record->display == 1 ? 'Có' : 'Không',
+            $record->line_id ?? '',
+            $machineIds,
         ];
     }
-
     public function styles(Worksheet $sheet)
     {
         // Apply styles to the header row

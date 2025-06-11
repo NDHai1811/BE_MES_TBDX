@@ -145,6 +145,9 @@ class CustomerController extends AdminController
         $file = "KhachHang_$timestamp.xlsx";
         $filePath = "export/$file";
         $data = $this->customerQuery($request)->get();
+        if ($data->isEmpty()){
+            return $this->failure([], 'Không có dữ liệu để xuất', 404);
+        }
         $result = Excel::store(new CustomerExport($data), $filePath, 'excel');
 
         if (empty($result))

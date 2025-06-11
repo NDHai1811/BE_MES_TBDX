@@ -108,6 +108,9 @@ class TestCriteriaController extends AdminController
         $file = "ChiTieuKiemTra_$timestamp.xlsx";
         $filePath = "export/$file";
         $data = $this->queryTestCriteria($request)->get();
+        if ($data->isEmpty()){
+            return $this->failure([], 'Không có dữ liệu để xuất', 404);
+        }
         $result = Excel::store(new TestCriteriaExport($data), $filePath, 'excel');
 
         if (empty($result))

@@ -115,8 +115,11 @@ class ErrorMachineController extends AdminController
         $file = "LỗiMáy_$timestamp.xlsx";
         $filePath = "export/$file";
         $data = $this->queryErrorMachine($request)->get();
+        if ($data->isEmpty()){
+           return $this->failure([], 'Không có dữ liệu để xuất', 404);
+            
+        }
         $result = Excel::store(new ErrorMachineExport($data), $filePath, 'excel');
-
         if (empty($result))
             return $this->failure([], 'THAO TÁC THẤT BẠI', 500);
         # Generate file base64

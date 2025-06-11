@@ -21,6 +21,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 
 class MaterialController extends AdminController
 {
@@ -197,5 +199,187 @@ class MaterialController extends AdminController
             return $this->failure($th, 'Đã xảy ra lỗi');
         }
         return $this->success('Xoá thành công');
+    }
+    public function exportMaterials(Request $request){
+        $query = Material::with('locator', 'supplier')
+            ->select(['id', 'ma_vat_tu', 'ma_cuon_ncc', 'so_kg', 'loai_giay', 'kho_giay', 'dinh_luong', 'fsc'])
+            ->orderByRaw('CHAR_LENGTH(id) DESC')
+            ->orderBy('id', 'desc');
+        
+        // Apply filters
+        if (isset($request->loai_giay)) {
+            $query->where('loai_giay', 'like', "%$request->loai_giay%");
+        }
+        if (isset($request->ma_cuon_ncc)) {
+            $query->where('ma_cuon_ncc', 'like', "%$request->ma_cuon_ncc%");
+        }
+        if (isset($request->id)) {
+            $query->where('id', 'like', "%$request->id%");
+        }
+        if (isset($request->phan_loai)) {
+            if ($request->phan_loai == 1) {
+                $query->has('locator');
+            } else if ($request->phan_loai == 0) {
+                $query->doesntHave('locator');
+            }
+        }
+        if (isset($request->locator_id)) {
+            $query->whereHas('locator', function ($q) use ($request) {
+                $q->where('locator_mlt_id', 'like', "%$request->locator_id%");
+            });
+        }
+        
+        $records = $query->get();
+        
+        if ($records->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không có dữ liệu để xuất'
+            ]);
+        }
+        
+        try {
+            foreach($records as $record){
+                $record->id = $record->id ?? "";
+                $record->ma_vat_tu = $record->ma_vat_tu ?? "";
+                $record->ten_nha_cung_cap = $record->supplier->name ?? "";
+                $record->ma_cuon_ncc = $record->ma_cuon_ncc ?? "";
+                $record->so_kg = $record->so_kg ?? "";
+                $record->loai_giay = $record->loai_giay ?? "";
+                $record->kho_giay = $record->kho_giay ?? "";
+                $record->dinh_luong = $record->dinh_luong ?? "";
+                $record->fsc =  $record->fsc == 1 ? "X" : "";
+                $record->vi_tri = $record->locator->locator_mlt_id ?? "";
+                $record->phan_loai = $record->vi_tri == "" ? "Chưa nhập kho" : "Đã nhập kho";
+            }
+            
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $start_row = 2;
+            $start_col = 1;
+            
+            $centerStyle = [
+                'alignment' => [
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'wrapText' => true,
+                ],
+                'borders' => [
+                    'outline' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ];
+            $headerStyle = array_merge($centerStyle, [
+                'font' => ['bold' => true],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['argb' => 'BFBFBF'],
+                ]
+            ]);
+            $titleStyle = array_merge($centerStyle, [
+                'font' => ['size' => 16, 'bold' => true],
+            ]);
+            $border = [
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ];
+            
+            $header = ['STT', 'Mã cuộn TBDX', 'Mã vật tư', 'Tên nhà cung cấp', 'Mã cuộn NCC', 'Số kg', 'Loại giấy', 'Khổ giấy', 'Định lượng', 'FSC', 'Vị trí', 'Phân loại'];
+            $table_key = [
+                'A' => 'stt',
+                'B' => 'id',
+                'C' => 'ma_vat_tu',
+                'D' => 'ten_nha_cung_cap',
+                'E' => 'ma_cuon_ncc',
+                'F' => 'so_kg',
+                'G' => 'loai_giay',
+                'H' => 'kho_giay',
+                'I' => 'dinh_luong',
+                'J' => 'fsc',
+                'K' => 'vi_tri',
+                'L' => 'phan_loai',
+            ];
+            
+            foreach ($header as $key => $cell) {
+                $sheet->setCellValue([$start_col, $start_row], $cell)->getStyle([$start_col, $start_row])->applyFromArray($headerStyle);
+                $start_col += 1;
+            }
+
+            $sheet->setCellValue([1, 1], 'Danh sách nguyên vật liệu')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+            $sheet->getRowDimension(1)->setRowHeight(40);
+            
+            $table_col = 1;
+            $table_row = $start_row + 1;
+            foreach ($records as $key => $row) {
+                $table_col = 1;
+                
+                $rowData = [
+                    'stt' => $key + 1,
+                    'id' => $row->id,
+                    'ma_vat_tu' => $row->ma_vat_tu,
+                    'ten_nha_cung_cap' => $row->ten_nha_cung_cap,
+                    'ma_cuon_ncc' => $row->ma_cuon_ncc,
+                    'so_kg' => $row->so_kg,
+                    'loai_giay' => $row->loai_giay,
+                    'kho_giay' => $row->kho_giay,
+                    'dinh_luong' => $row->dinh_luong,
+                    'fsc' => $row->fsc,
+                    'vi_tri' => $row->vi_tri,
+                    'phan_loai' => $row->phan_loai,
+                ];
+                
+                foreach ($table_key as $k => $value) {
+                    if (isset($rowData[$value])) {
+                        $sheet->setCellValue($k . $table_row, $rowData[$value])->getStyle($k . $table_row)->applyFromArray($centerStyle);
+                    }
+                    $table_col += 1;
+                }
+                $table_row += 1;
+            }
+            
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+                $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
+            }
+
+            // ==== Lưu file và trả về base64 ====
+            $timestamp = date('Ymd_His');
+            $fileName = "DanhSachNguyenVatLieu_{$timestamp}.xlsx";
+            $filePath = "export/$fileName";
+
+            Storage::disk('excel')->makeDirectory('export');
+
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save(storage_path("app/excel/$filePath"));
+
+            $fileContent = Storage::disk('excel')->get($filePath);
+            $fileType = File::mimeType(storage_path("app/excel/$filePath"));
+            $base64 = base64_encode($fileContent);
+            $fileBase64Uri = "data:$fileType;base64,$base64";
+
+            Storage::disk('excel')->delete($filePath);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'file' => $fileName,
+                    'type' => $fileType,
+                    'data' => $fileBase64Uri,
+                ],
+            ]);
+            
+        } catch(\Throwable $th) {
+            ErrorLog::saveError($request, $th);
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+            ], 500);
+        }
     }
 }

@@ -249,6 +249,9 @@ class RoleController extends AdminController
         $file = "Phân quyền.xlsx";
         $filePath = "export/$file";
         $data = $this->queryRole($request)->get();
+        if ($data->isEmpty()){
+            return $this->failure([], 'Không có dữ liệu để xuất', 404);
+        }
         $result = Excel::store(new RoleExport($data), $filePath, 'excel');
 
         if (empty($result))
