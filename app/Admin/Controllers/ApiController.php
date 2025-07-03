@@ -1306,7 +1306,7 @@ class ApiController extends AdminController
             $obj->rong = $order->rong ?? "";
             $obj->cao = $order->cao ?? "";
             $obj->dot = $order->dot ?? "";
-            $obj->so_dao = $info->dinh_muc ?? "";
+            $obj->so_dao = $obj->dinh_muc ?? "";
             $obj->kho_tong = $order->kho_tong ?? "";
             $obj->kho = $order->kho ?? "";
             $obj->so_ra = $order->so_ra ?? "";
@@ -2391,20 +2391,10 @@ class ApiController extends AdminController
             $obj = $record ?? new stdClass;
             $obj->start_time = $record->start_time;
             $obj->end_time = $record->end_time;
-            
-            // Xử lý trường hợp error_machine bị null
-            if ($record->error_machine) {
-                $obj->code = $record->error_machine->code ?? "-";
-                $obj->ten_su_co = $record->error_machine->ten_su_co ?? "-";
-                $obj->nguyen_nhan = !empty($record->error_machine->nguyen_nhan) ? $record->error_machine->nguyen_nhan : "-";
-                $obj->cach_xu_ly = !empty($record->error_machine->cach_xu_ly) ? $record->error_machine->cach_xu_ly : "-";
-            } else {
-                $obj->code = "-";
-                $obj->ten_su_co = "-";
-                $obj->nguyen_nhan = "-";
-                $obj->cach_xu_ly = "-";
-            }
-            
+            $obj->code = $record->error_machine->code ?? "-";
+            $obj->ten_su_co = $record->error_machine->ten_su_co ?? "-";
+            $obj->nguyen_nhan = $record->error_machine->nguyen_nhan ?? "-";
+            $obj->cach_xu_ly = $record->error_machine->cach_xu_ly ?? "-";
             $data[] = $obj;
         }
         // dd(json_encode($data));
