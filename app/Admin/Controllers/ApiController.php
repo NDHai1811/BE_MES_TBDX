@@ -1306,7 +1306,7 @@ class ApiController extends AdminController
             $obj->rong = $order->rong ?? "";
             $obj->cao = $order->cao ?? "";
             $obj->dot = $order->dot ?? "";
-            $obj->so_dao = $obj->dinh_muc ?? "";
+            $obj->so_dao = $info->dinh_muc ?? "";
             $obj->kho_tong = $order->kho_tong ?? "";
             $obj->kho = $order->kho ?? "";
             $obj->so_ra = $order->so_ra ?? "";
@@ -2378,22 +2378,36 @@ class ApiController extends AdminController
 
     public function errorMachineLog(Request $request)
     {
+        // dd($request->all());
         $query = MachineLog::with('user', 'error_machine')->where('machine_id', $request->machine_id);
+        // dd($query);
         if (isset($request->start_date) && isset($request->end_date)) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)));
         }
         $records = $query->orderBy('start_time')->get();
+        // dd($records);
         $data = [];
         foreach ($records as $key => $record) {
             $obj = $record ?? new stdClass;
             $obj->start_time = $record->start_time;
             $obj->end_time = $record->end_time;
-            $obj->code = $record->error_machine->code ?? "";
-            $obj->ten_su_co = $record->error_machine->ten_su_co ?? "";
-            $obj->nguyen_nhan = $record->error_machine->nguyen_nhan ?? "";
-            $obj->cach_xu_ly = $record->error_machine->cach_xu_ly ?? "";
+            
+            // Xử lý trường hợp error_machine bị null
+            if ($record->error_machine) {
+                $obj->code = $record->error_machine->code ?? "-";
+                $obj->ten_su_co = $record->error_machine->ten_su_co ?? "-";
+                $obj->nguyen_nhan = !empty($record->error_machine->nguyen_nhan) ? $record->error_machine->nguyen_nhan : "-";
+                $obj->cach_xu_ly = !empty($record->error_machine->cach_xu_ly) ? $record->error_machine->cach_xu_ly : "-";
+            } else {
+                $obj->code = "-";
+                $obj->ten_su_co = "-";
+                $obj->nguyen_nhan = "-";
+                $obj->cach_xu_ly = "-";
+            }
+            
             $data[] = $obj;
         }
+        // dd(json_encode($data));
         return $this->success($data);
     }
 
@@ -2415,11 +2429,13 @@ class ApiController extends AdminController
 
     public function errorMachineResult(Request $request)
     {
+        // dd($request->all());
         try {
             DB::beginTransaction();
             $input = $request->all();
             if (isset($input['code'])) {
-                $error_machine = ErrorMachine::where('code', $input['code'])->first();
+                $error_machine = ErrorMachine::where('id', $input['code'])->first();
+                // dd($error_machine);
             } else {
                 $latest_error_machine = ErrorMachine::latest()->first();
                 $index = $latest_error_machine ? $latest_error_machine->id : 0;
@@ -2429,11 +2445,15 @@ class ApiController extends AdminController
                 $error_machine = ErrorMachine::create($input);
             }
             MachineLog::find($input['id'])->update(['error_machine_id' => $error_machine->id, 'user_id' => $request->user()->id, 'handle_time' => date('Y-m-d H:i:s')]);
+            $error_machine->update([
+                'nguyen_nhan' => $input['nguyen_nhan'],
+                'cach_xu_ly' => $input['cach_xu_ly'],
+            ]);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             ErrorLog::saveError($request, $th);
-            return $this->failure($th, 'Đã xảy ra lỗi');
+            return $this->failure($th, );
         }
         return $this->success('');
     }
