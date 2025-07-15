@@ -40,6 +40,7 @@ return new class extends Migration
             $table->string('order_id')->nullable();
             $table->string('so_ra')->nullable();
             $table->string('so_dao')->nullable();
+            $table->string('so_du')->nullable()->default(0);
             $table->timestamps();
 
             $table->foreign('lot_id')->references('id')->on('lots')->onDelete('cascade');

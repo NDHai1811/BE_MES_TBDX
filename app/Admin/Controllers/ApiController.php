@@ -224,7 +224,7 @@ class ApiController extends AdminController
         } else {
             return $this->failure('', 'Không tìm thấy lô cần chạy');
         }
-        return $this->success('');
+        return $this->success([],'Đã bắt đầu sản xuất');
     }
 
     public function stopProduce(Request $request)
@@ -252,7 +252,7 @@ class ApiController extends AdminController
             ErrorLog::saveError($request, $th);
             return $this->failure($th->getMessage(), 'Đã xảy ra lỗi');
         }
-        return $this->success('');
+        return $this->success([],'Đã dừng');
     }
 
     public function startTracking(Request $request)
@@ -382,9 +382,10 @@ class ApiController extends AdminController
     public function pausePlan(Request $request)
     {
         $infos = InfoCongDoan::whereIn('id', ($request->info_ids ?? []));
-        if ($infos->count() <= 0) {
+        if ($infos->get()->count() <= 0) {
             return $this->failure('', 'Không có bản ghi được cập nhật');
         }
+        
         $infos->update(['status' => -1]);
         $tracking = Tracking::where('machine_id', $request->machine_id)->first();
         if ($tracking && in_array($tracking->lo_sx, $infos->pluck('lo_sx')->toArray())) {
@@ -400,7 +401,7 @@ class ApiController extends AdminController
             $this->reorderInfoCongDoan();
         }
 
-        return $this->success('', 'Đã tạm dừng');
+        return $this->success([], 'Đã tạm dừng');
     }
 
     public function resumePlan(Request $request)
@@ -443,7 +444,7 @@ class ApiController extends AdminController
         } catch (\Throwable $th) {
             DB::rollBack();
         }
-        return $this->success('', 'Đã tiếp tục');
+        return $this->success([], 'Đã tiếp tục');
     }
 
     public function updateQuantityInfoCongDoan(Request $request)
@@ -452,6 +453,7 @@ class ApiController extends AdminController
         // return $info;
         $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat;
         if ($info->machine_id == 'So01') {
+            // dd('ok');
             $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat * $info->so_ra;
             $info->update([
                 'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
@@ -461,7 +463,9 @@ class ApiController extends AdminController
             ]);
             $info->infoCongDoanPriority()->delete();
             $this->reorderInfoCongDoan();
+            // dd('render xong');
             $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
+            // dd($tracking);
             if ($tracking) {
                 $tracking->update([
                     'lo_sx' => null,
@@ -471,6 +475,7 @@ class ApiController extends AdminController
                 ]);
             }
         } else {
+            // dd('ok');
             $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat;
             $info->update([
                 'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
@@ -490,7 +495,7 @@ class ApiController extends AdminController
             }
         }
 
-        return $this->success('', 'Đã cập nhật');
+        return $this->success([], 'Đã cập nhật');
     }
 
     public function deletePausedPlanList(Request $request)
@@ -500,10 +505,15 @@ class ApiController extends AdminController
             DB::beginTransaction();
             ProductionPlan::whereIn('id', $infos->pluck('plan_id')->toArray())->delete();
             GroupPlanOrder::whereIn('plan_id', $infos->pluck('plan_id')->toArray())->delete();
-            $infos->delete();
+
+            $infos->each(function($info) {
+                $info->delete();
+            });
+            // dd($infos->toArray());
             InfoCongDoanPriority::whereIn('info_cong_doan_id', ($request->info_ids ?? []))->delete();
             $this->reorderInfoCongDoan();
             DB::commit();
+            return $this->success([], 'Đã xóa');
         } catch (\Throwable $th) {
             //throw $th;
             DB::rollBack();
@@ -968,7 +978,7 @@ class ApiController extends AdminController
     public function getTrackingStatus(Request $request)
     {
         $tracking = Tracking::where('machine_id', $request['machine_id'])->first();
-        return $this->success($tracking);
+        return $this->success($tracking ?? []);
     }
 
     public function getCurrentManufacturing(Request $request)
@@ -1029,6 +1039,7 @@ class ApiController extends AdminController
             case Line::LINE_SONG:
                 //Chia query thành "đã qua sản xuất" và "chưa sản xuất"
                 $info_priority = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
+                // dd($info_priority);
                 $unfinished_query = InfoCongDoan::whereIn('id', $info_priority)
                     ->whereIn('status', [0, 1])
                     ->whereDate('ngay_sx', '<=', date('Y-m-d'))
@@ -1052,6 +1063,7 @@ class ApiController extends AdminController
             default:
                 break;
         }
+        // dd($data);
         return $this->success($data);
     }
 
@@ -1507,10 +1519,8 @@ class ApiController extends AdminController
             ->where('machine_id', $request->machine_id)
             ->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))
             ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)))
-            ->orderBy('created_at', 'DESC')
-            ->get();
+            ->orderBy('created_at', 'DESC')->get();
         $data = [];
-        // return $info_lo_sx;
         foreach ($info_lo_sx as $info) {
             $obj = null;
             $order = null;
@@ -1521,6 +1531,7 @@ class ApiController extends AdminController
                 $obj = $info->tem;
             }
             if (is_null($obj)) continue;
+            $obj->so_du = $info->so_du ?? 0;
             $obj->lo_sx = $info->lo_sx ?? "-";
             $obj->phan_dinh = $info->phan_dinh ?? "-";
             $obj->san_luong = $info->sl_dau_ra_hang_loat ?? 0;
@@ -1554,36 +1565,251 @@ class ApiController extends AdminController
 
     public function manualPrintStamp(Request $request)
     {
-        $input = $request->all();
-        $info_lo_sx = InfoCongDoan::with('plan.order.customer', 'tem', 'user')->whereIn('lo_sx', $input['ids'])->where('machine_id', $input['machine_id'])->get();
-        $data = [];
-        foreach ($info_lo_sx as $info) {
-            $tm = [
-                'lo_sx' => $info->lo_sx,
-                'khach_hang' => $info->plan->order->customer->name ?? "",
-                'mdh' => $info->plan->order->mdh ?? "",
-                'quy_cach' => $info->plan ? $info->plan->dai . 'x' . $info->plan->rong . 'x' . $info->plan->cao : $info->tem->quy_cach ?? "",
-                'so_luong' => $info->sl_dau_ra_hang_loat ?? "",
-                'mql' => $info->plan->order->mql ?? $info->tem->mql ?? "",
-                'order' => $info->plan->order->order ?? $info->tem->order ?? "",
-                'po' => $info->plan->order->po ?? $info->tem->po ?? "",
-                'style' => $info->plan->order->style ?? $info->tem->style ?? "",
-                'style_no' => $info->plan->order->style_no ?? $info->tem->style_no ?? "",
-                'color' => $info->plan->order->color ?? $info->tem->color ?? "",
-                'nhan_vien_sx' => $info->user->name ?? "",
-                'machine_id' => $info->machine_id ?? "",
-                'note' => $info->plan->order->note3 ?? $info->tem->note ?? "",
-            ];
-            $split_pallet = $this->splitNumberIntoArray($info->sl, $input['dinh_muc_pallet']);
-            foreach ($split_pallet as $key => $dinh_muc) {
-                $json = ['lo_sx' => $info->lo_sx, 'pallet' => 'PL' . ($key + 1), 'so_luong' => $dinh_muc];
-                $tm['qr_code'] = json_encode($json);
-                $data = $tm;
-            }
+        $content = '<style>
+    @media print {
+        @page {
+            size: A4;
+            margin: 15mm;
         }
-        return $this->success($data);
+
+        body {
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+            font-family: Arial, sans-serif !important;
+        }
+
+        .print-container {
+            width: 180mm !important;
+            height: auto !important;
+            margin: 0 auto !important;
+            transform: scale(1) !important;
+        }
+
+        .title-size {
+            font-size: 32px !important;
+            font-weight: bold !important;
+        }
+
+        .medium-size {
+            font-size: 24px !important;
+        }
+
+        .small-size {
+            font-size: 20px !important;
+        }
+
+        b {
+            font-weight: 600 !important;
+        }
+
+        .no-print {
+            display: none !important;
+        }
     }
 
+    @media screen {
+        .print-container {
+            width: 85vw;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+
+        .title-size {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .medium-size {
+            font-size: 24px;
+        }
+
+        .small-size {
+            font-size: 20px;
+        }
+    }
+
+    .d-flex {
+        display: flex;
+    }
+
+    .justify-content-between {
+        justify-content: space-between;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+</style>
+
+<div class="print-container">
+    <table style="width:100%; border-collapse:collapse; border:2px solid #000; font-family:Arial,sans-serif; background:white;">
+        <tr style="height:120px;">
+            <td colspan="4" style="border:1px solid #000; padding:0;">
+                <div style="display:flex; align-items:center; justify-content:space-between; height:100%;">
+                    <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:100px;">
+                        <div style="width:100px; height:100px; display:flex; align-items:center; justify-content:center;">
+                            [qrCode]
+                        </div>
+                    </div>
+                    <div style="flex:2; text-align:center;">
+                        <div class="title-size" style="margin:0;">TEM THÀNH PHẨM</div>
+                    </div>
+                    <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:100px;">
+                        [logo]
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Khách hàng</td>
+            <td style="border:1px solid #000; text-align:center;">[customer_name]</td>
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Số Đ.H</td>
+            <td style="border:1px solid #000; text-align:center;">[order_number]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Quy cách</td>
+            <td colspan="3" style="border:1px solid #000; text-align:center; font-weight:600;">[specifications]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Số lượng</td>
+            <td style="border:1px solid #000; text-align:center;">[quantity]</td>
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">MQL TBDX</td>
+            <td style="border:1px solid #000; text-align:center;">[mql_tbdx]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Order</td>
+            <td colspan="3" style="border:1px solid #000; text-align:center;">[order]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">TMO</td>
+            <td colspan="3" style="border:1px solid #000; text-align:center;">[tmo]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">PO</td>
+            <td colspan="3" style="border:1px solid #000; text-align:center;">[po]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Style</td>
+            <td colspan="3" style="border:1px solid #000; text-align:center;">[style]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Style No</td>
+            <td colspan="3" style="border:1px solid #000; text-align:center;">[style_no]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Color</td>
+            <td colspan="3" style="border:1px solid #000; text-align:center;">[color]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Ngày SX</td>
+            <td colspan="3" style="border:1px solid #000; text-align:center;">[production_date]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">N.Viên S.X</td>
+            <td style="border:1px solid #000; text-align:center;">[worker_name]</td>
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Máy</td>
+            <td style="border:1px solid #000; text-align:center;">[machine_code]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Nơi giao</td>
+            <td colspan="3" style="border:1px solid #000; text-align:center;">[delivery_location]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Đợt</td>
+            <td style="border:1px solid #000; text-align:center;">[batch]</td>
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">SLG SX</td>
+            <td style="border:1px solid #000; text-align:center;">[production_quantity]</td>
+        </tr>
+        <tr style="height:60px;">
+            <td style="border:1px solid #000; text-align:center; font-weight:600;">Ghi chú</td>
+            <td colspan="3" style="border:1px solid #000; text-align:center;">[notes]</td>
+        </tr>
+    </table>
+</div>';
+        $input = $request->all();
+        $result = '';
+        
+        if (empty($request->lot_ids)) return $this->failure([], 'Dữ liệu trống');
+        
+        if (count($request->lot_ids) > 0) {
+            $result = '<div style="display: flex; flex-direction: column">';
+        }
+        
+        $info_lo_sx = InfoCongDoan::with('plan.order.customer', 'tem', 'user', 'machine')->whereIn('lo_sx', $input['lot_ids'])->where('machine_id', $input['machine_id'])->get();
+        
+        foreach ($info_lo_sx as $key => $info) {
+            // Tạo QR code data
+            $obj = new stdClass();
+            $obj->lo_sx = $info->lo_sx;
+            $obj->so_luong = $info->sl_dau_ra_hang_loat ?? "";
+            $obj->mql = $info->plan->order->mql ?? $info->tem->mql ?? "";
+            $info->qr_code = json_encode($obj);
+            // dd($info->toArray()); //DEBUG
+            // Tạo QR code image
+            $qrCode = new QrCode($info->qr_code);
+            $writer = new PngWriter();
+            $qr_result = $writer->write($qrCode);
+            $qrCodeBase64 = base64_encode($qr_result->getString());
+            $qrImg = '<img src="data:image/png;base64,' . $qrCodeBase64 . '" style="width:90px; height:90px; object-fit:contain;">';
+            // Replace placeholders với dữ liệu thực
+            $html = strtr($content, [
+                '[qrCode]'            => $qrImg,
+                '[logo]'              => '<img src="' . asset('company_config/logo.png') . '" style="width:90px; height:90px; object-fit:contain;" />',
+                '[customer_name]'     => e($info->plan->order->customer->name ?? $info->tem->order->short_name ?? ""),
+                '[order_number]'      => e($info->plan->order->mdh ?? $info->tem->order->mdh ?? ""),
+                '[specifications]'    => e($info->plan ? $info->plan->dai . 'x' . $info->plan->rong . 'x' . $info->plan->cao : $info->tem->quy_cach ?? ""),
+                '[quantity]'          => e($request->quantity ?? $info->sl_dau_ra_hang_loat ?? ""),
+                '[mql_tbdx]'          => e($info->plan->order->mql ?? $info->tem->mql ?? ""),
+                '[order]'             => e($info->plan->order->order ?? $info->tem->order->order ?? ""),
+                '[tmo]'               => e($info->plan->order->tmo ?? $info->tem->tmo ?? ""),
+                '[po]'                => e($info->plan->order->po ?? $info->tem->po ?? ""),
+                '[style]'             => e($info->plan->order->style ?? $info->tem->style ?? ""),
+                '[style_no]'          => e($info->plan->order->style_no ?? $info->tem->style_no ?? ""),
+                '[color]'             => e($info->plan->order->color ?? $info->tem->color ?? ""),
+                '[production_date]'   => Carbon::now()->format('d/m/Y'),
+                '[worker_name]'       => e($info->user->name ?? ""),
+                '[machine_code]'      => e($info->machine->code ?? $info->machine_id ?? ""),
+                '[delivery_location]' => e($info->plan->order->delivery_location ?? $info->tem->delivery_location ?? ""),
+                '[batch]'             => e($info->plan->order->dot ?? $info->tem->dot ?? ""),
+                '[production_quantity]' => e($info->sl_dau_ra_hang_loat ?? ""),
+                '[notes]'             => e($info->plan->order->note_3 ?? $info->tem->note ?? "")
+            ]);
+
+            // Thêm page break nếu không phải item cuối cùng
+            if ($key < count($info_lo_sx) - 1) {
+                $html .= '<div style="page-break-after:always;"></div>';
+            }
+            
+            $result .= $html;
+        }
+
+        if (empty($result)) return $this->failure([], 'Dữ liệu trống');
+
+        if (count($request->lot_ids) > 0) {
+            $result .= '</div>';
+        }
+        
+        return $this->success([
+            'html' => $result
+        ]);
+    }
+    function updateSodu(Request $request)
+    {
+        $info = InfoCongDoan::find($request->info_id);
+        if(!$info){
+            return $this->failure($request->info_id, 'Không tìm thấy lô');
+        }
+        if(is_numeric($request->so_du)){
+            $info->update(['so_du'=>$request->so_du]);
+            return $this->success($request->all(), 'Đã cập nhật số dư');
+        }else{
+            return $this->failure($request->info_id, 'Cập nhật không thành công');
+        }
+    }
     public function getManufactureOverall(Request $request)
     {
         $machine = Machine::with('line')->where('id', $request->machine_id)->first();
@@ -2689,94 +2915,185 @@ class ApiController extends AdminController
 
     public function printSongPlan(Request $request)
     {
-        $content = '<table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:Arial,sans-serif;">
-            <tr style="height:150px;">
-                <td colspan="5" style="border:1px solid #000; padding:0;">
-                    <div style="display:flex; align-items:center; justify-content:space-between;">
-                        <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:110px;">
-                            <div style="width:140px; height:140px; display:flex; align-items:center; justify-content:center;">[qrcode]</div>
-                        </div>
-                        <div style="flex:2; text-align:center;">
-                            <div style="font-size:32px; font-weight:bold; margin-bottom:4px;">TEM GIẤY TẤM</div>
-                        </div>
-                        <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:110px;">
-                            <img src="[logo]" style="width:110px; height:110px; object-fit:contain;" />
-                        </div>
+        $content = '<style>
+    @media print {
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+            font-family: Arial, sans-serif !important;
+        }
+
+        .print-container {
+            width: 180mm !important;
+            height: auto !important;
+            margin: 0 auto !important;
+            transform: scale(1) !important;
+        }
+
+        table {
+            width: 100% !important;
+            border: 2px solid #000 !important;
+            border-collapse: collapse !important;
+            font-size: 12px !important;
+        }
+
+        td {
+            border: 1px solid #000 !important;
+            padding: 3px !important;
+            line-height: 1.2 !important;
+        }
+
+        .title-size {
+            font-size: 22px !important;
+        }
+
+        .big-size {
+            font-size: 18px !important;
+        }
+
+        .medium-size {
+            font-size: 14px !important;
+        }
+
+        .small-size {
+            font-size: 11px !important;
+        }
+    }
+
+    @media screen {
+        .print-container {
+            width: 85vw;
+            max-width: 900px;
+            margin: 20px auto;
+        }
+
+        table {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    }
+</style>
+
+<div class="print-container">
+    <table
+        style="width:100%; border-collapse:collapse; border:2px solid #000; font-family:Arial,sans-serif; background:white;">
+        <tr style="height:120px;">
+            <td colspan="5" style="border:1px solid #000; padding:0;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:110px;">
+                        <div
+                            style="width:140px; height:140px; display:flex; align-items:center; justify-content:center;">
+                            [qrcode]</div>
                     </div>
-                </td>
-            </tr>
-            <tr style="height:50px;">
-                <td colspan="2" style="border:1px solid #000; font-size:18px; text-align:center;">KHÁCH HÀNG</td>
-                <td colspan="2" style="border:1px solid #000; font-size:18px; text-align:center;">ĐƠN HÀNG</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">LÔ SX</td>
-            </tr>
-            <tr style="height:80px;">
-                <td colspan="2" style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle; height:48px;">[customer]</td>
-                <td colspan="2" style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle;">[mdh]</td>
-                <td style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle;">[lot]</td>
-            </tr>
-            <tr style="height:50px;">
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">DÀI</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">RỘNG</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">CAO</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">LOT</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ LƯỢNG</td>
-            </tr>
-            <tr style="height:80px;">
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[length]</td>
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[width]</td>
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[height]</td>
-                <td style="border:1px solid #000; font-size:18px; font-weight:500; text-align:center;">[lot_code]</td>
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[quantity]</td>
-            </tr>
-            <tr style="height:50px;">
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">KHỔ</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">DÀI</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ DAO</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">XẢ</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ LỚP</td>
-            </tr>
-            <tr style="height:80px;">
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[kho]</td>
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[dai]</td>
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_dao]</td>
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[xa]</td>
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_lop]</td>
-            </tr>
-            <tr style="height:50px;">
-                <td colspan="4" style="border:1px solid #000; font-size:18px; text-align:left; padding-left:8px;">GHI CHÚ SÓNG</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ PALLET</td>
-            </tr>
-            <tr style="height:80px;">
-                <td colspan="4" style="border:1px solid #000; font-size:18px; font-weight:bold; text-align:left; padding-left:8px;">[ghi_chu_song]</td>
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_pallet]</td>
-            </tr>
-            <tr style="height:50px;">
-                <td colspan="4" style="border:1px solid #000; font-size:18px; text-align:left; padding-left:8px;">GHI CHÚ TBDX</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">ĐỢT</td>
-            </tr>
-            <tr style="height:80px;">
-                <td colspan="4" style="border:1px solid #000; font-size:18px; font-weight:bold; text-align:left; padding-left:8px;">[ghi_chu_tbdx]</td>
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[dot]</td>
-            </tr>
-            <tr style="height:50px;">
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">NGÀY SX</td>
-                <td colspan="2" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[ngay_sx]</td>
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">CA SX</td>
-                <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[ca_sx]</td>
-            </tr>
-            <tr style="height:50px;">
-                <td style="border:1px solid #000; font-size:18px; text-align:center;">MQL ĐÃ CHẠY</td>
-                <td colspan="4" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[mql_da_chay]</td>
-            </tr>
-        </table>';
+                    <div style="flex:2; text-align:center;">
+                        <div class="title-size" style="font-size:32px; font-weight:bold; margin-bottom:4px;">TEM GIẤY
+                            TẤM</div>
+                    </div>
+                    <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:110px;">
+                        <img src="[logo]" style="width:110px; height:110px; object-fit:contain;" />
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr style="height:50px;">
+            <td colspan="2" class="medium-size" style="border:1px solid #000; font-size:18px; text-align:center;">KHÁCH
+                HÀNG</td>
+            <td colspan="2" class="medium-size" style="border:1px solid #000; font-size:18px; text-align:center;">ĐƠN
+                HÀNG</td>
+            <td class="medium-size" style="border:1px solid #000; font-size:18px; text-align:center;">LÔ SX</td>
+        </tr>
+        <tr style="height:80px;">
+            <td colspan="2" class="big-size"
+                style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle; height:48px;">
+                [customer]</td>
+            <td colspan="2" class="big-size"
+                style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle;">
+                [mdh]</td>
+            <td class="big-size"
+                style="border:1px solid #000; font-size:28px; font-weight:bold; text-align:center; vertical-align:middle;">
+                [lot]</td>
+        </tr>
+        <tr style="height:50px;">
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">DÀI</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">RỘNG</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">CAO</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">LOT</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ LƯỢNG</td>
+        </tr>
+        <tr style="height:80px;">
+            <td class="big-size" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">
+                [length]</td>
+            <td class="big-size" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">
+                [width]</td>
+            <td class="big-size" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">
+                [height]</td>
+            <td class="medium-size" style="border:1px solid #000; font-size:18px; font-weight:600; text-align:center;">
+                [lot_code]</td>
+            <td class="big-size" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">
+                [quantity]</td>
+        </tr>
+        <tr style="height:50px;">
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">KHỔ</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">DÀI</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ DAO</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">XẢ</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ LỚP</td>
+        </tr>
+        <tr style="height:80px;">
+            <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[kho]</td>
+            <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[dai]</td>
+            <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_dao]</td>
+            <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[xa]</td>
+            <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_lop]</td>
+        </tr>
+        <tr style="height:50px;">
+            <td colspan="4" style="border:1px solid #000; font-size:18px; text-align:left; padding-left:8px;">GHI CHÚ
+                SÓNG</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">SỐ PALLET</td>
+        </tr>
+        <tr style="height:80px;">
+            <td colspan="4"
+                style="border:1px solid #000; font-size:18px; font-weight:bold; text-align:left; padding-left:8px;">
+                [ghi_chu_song]</td>
+            <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[so_pallet]</td>
+        </tr>
+        <tr style="height:50px;">
+            <td colspan="4" style="border:1px solid #000; font-size:18px; text-align:left; padding-left:8px;">GHI CHÚ
+                TBDX</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">ĐỢT</td>
+        </tr>
+        <tr style="height:80px;">
+            <td colspan="4"
+                style="border:1px solid #000; font-size:18px; font-weight:bold; text-align:left; padding-left:8px;">
+                [ghi_chu_tbdx]</td>
+            <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[dot]</td>
+        </tr>
+        <tr style="height:50px;">
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">NGÀY SX</td>
+            <td colspan="2" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">
+                [ngay_sx]</td>
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">CA SX</td>
+            <td style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">[ca_sx]</td>
+        </tr>
+        <tr style="height:50px;">
+            <td style="border:1px solid #000; font-size:18px; text-align:center;">MQL ĐÃ CHẠY</td>
+            <td colspan="4" style="border:1px solid #000; font-size:24px; font-weight:bold; text-align:center;">
+                [mql_da_chay]</td>
+        </tr>
+    </table>
+    </div>';
         $result = '';
-        $arr = [];
-        if (empty($request->ids)) return $this->failure([], 'Dữ liệu trống');
-        if (count($request->ids) > 0) {
+        if (empty($request->lot_ids)) return $this->failure([], 'Chưa chọn lô sản xuất');
+        if (count($request->lot_ids) > 0) {
             $result = '<div style="display: flex; flex-direction: column">';
         }
-        foreach ($request->ids as $key => $id) {
+        foreach ($request->lot_ids as $key => $id) {
             $record = ProductionPlan::find($id);
             if (!$record) continue;
             $obj = new stdClass();

@@ -1988,6 +1988,7 @@ class ApiOIController extends AdminController
 
     public function pqcLotList(Request $request)
     {
+        // dd($request->all());
         $input = $request->all();
         $customOrder = [0, 2, 1];
 

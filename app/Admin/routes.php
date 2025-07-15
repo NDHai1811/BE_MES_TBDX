@@ -346,6 +346,7 @@ Route::group([
     $router->post('manufacture/manual/scan', [ApiController::class, 'scanManual'])->middleware('prevent-duplicate-requests');
     $router->get('manufacture/manual/list', [ApiController::class, 'manualList']);
     $router->post('manufacture/manual/print', [ApiController::class, 'manualPrintStamp']);
+    $router->post('manufacture/update-so-du', [ApiController::class, 'updateSodu']);
 
     $router->get('qc/check-permission', [ApiController::class, 'checkUserPermission']);
     $router->get('qc/line', [ApiController::class, 'getQCLine']);
